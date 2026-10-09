@@ -462,18 +462,11 @@ async function loadProgress() {
   try {
     const result = await progressApi.get(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul');
     $('streak-count').textContent = result.currentStreak;
-    $('streak-best').textContent = result.longestStreak;
-    $('streak-message').textContent = result.completedToday ? 'Bugünün adımı tamam. Yarın serine devam et.'
-      : result.currentStreak > 0 ? 'Serini sürdürmek için bugün bir görev tamamla.' : 'Bugün bir görev tamamla, serini başlat.';
-    $('streak-week').replaceChildren(...result.week.map(day => {
-      const date = new Date(`${day.date}T12:00:00`);
-      const box = node('div', `streak-day${day.completed ? ' achieved' : ''}`);
-      box.title = date.toLocaleDateString('tr-TR');
-      box.setAttribute('aria-label', `${box.title}: ${day.completed ? 'görev tamamlandı' : 'görev tamamlanmadı'}`);
-      box.append(node('span','',date.toLocaleDateString('tr-TR',{weekday:'short'})),node('b','',day.completed?'✓':'·'));
-      return box;
-    }));
-  } catch { $('streak-message').textContent = 'Seri yüklenemedi. Backend bağlantısını kontrol et.'; }
+    $('streak-count').parentElement.title = `En uzun seri: ${result.longestStreak} gün`;
+  } catch {
+    $('streak-count').textContent = '—';
+    $('streak-count').parentElement.title = 'Seri yüklenemedi. Backend bağlantısını kontrol et.';
+  }
   finally { progressLoading = false; }
 }
 function setEmailBusy(busy) {
