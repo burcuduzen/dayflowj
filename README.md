@@ -4,7 +4,7 @@ A local productivity app with notes, calendar, smart reminders, focus sessions, 
 
 ## Proje durumu
 
-Bu repo Spring Boot başlangıç projesini, özellik klasörlerini ve mimari planını içerir. Görev CRUD API’si ve durum güncelleme endpoint’i uygulandı. Kullanıcı arayüzü henüz uygulanmadı.
+Bu repo Spring Boot başlangıç projesini, özellik klasörlerini ve mimari planını içerir. Görev CRUD API’si ve durum güncelleme endpoint’i uygulandı. Görev yönetimi arayüzü de uygulandı.
 
 ## Hedef teknoloji yapısı
 
@@ -53,7 +53,7 @@ cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
-Backend `http://127.0.0.1:8080` adresinde çalışır. Görevleri listelemek için `http://127.0.0.1:8080/api/tasks` adresini aç. Kök adreste henüz sayfa bulunmadığı için 404 yanıtı normaldir. H2 verileri backend klasöründen çalıştırıldığında `backend/data/` altında saklanır.
+Backend `http://127.0.0.1:8080` adresinde çalışır. Arayüz için `http://127.0.0.1:8080` adresini aç. JSON görev listesi `http://127.0.0.1:8080/api/tasks` adresindedir. Ayrı frontend komutu gerekmez. H2 verileri backend klasöründen çalıştırıldığında `backend/data/` altında saklanır.
 
 Testleri çalıştırmak için backend klasöründe `./mvnw test` (Windows: `.\mvnw.cmd test`) kullan.
 

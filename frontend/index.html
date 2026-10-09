@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#166d60"><title>DayFlowJ · Görevlerin</title>
+  <link rel="stylesheet" href="/css/styles.css"><script type="module" src="/js/app.js"></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="DayFlowJ ana sayfa"><span class="brand-mark">d<span>f</span></span><span>dayflow<span class="brand-j">j</span></span></a>
+    <div class="workspace"><span class="workspace-icon">B</span><div>Kişisel alanın<small>Kendi ritminde ilerle.</small></div><span class="local-dot" title="Yerel çalışma"></span></div>
+    <p class="nav-label">PLANIN</p>
+    <nav aria-label="Görev görünümleri">
+      <button class="nav-item active" data-view="ALL" aria-current="page"><span>▦</span> Tüm görevler <b id="all-count">0</b></button>
+      <button class="nav-item" data-view="TODAY"><span>☀</span> Bugün <b id="today-count">0</b></button>
+      <button class="nav-item" data-view="UPCOMING"><span>↗</span> Yaklaşanlar <b id="upcoming-count">0</b></button>
+      <button class="nav-item" data-view="COMPLETED"><span>✓</span> Tamamlananlar <b id="completed-count">0</b></button>
+    </nav>
+    <div class="sidebar-note"><span class="note-symbol">✳</span><h3>Küçük adımlar, net bir gün.</h3><p>Aklındakileri buraya bırak. Bir sonraki adımına yer aç.</p></div>
+    <div class="local-info"><span class="local-dot"></span> Yerel çalışma alanı</div>
+  </aside>
+  <main>
+    <header class="topbar"><span id="date-label"></span><span class="version">DAYFLOWJ <span>01</span></span></header>
+    <section class="page-heading"><div><p class="eyebrow">BİRAZ DAHA NETLİK</p><h1 id="view-title">Gününü hafiflet.</h1><p id="view-description">Yapacakların bir yerde. Kontrol sende.</p></div><button class="primary" id="new-task"><span aria-hidden="true">＋</span> Yeni görev</button></section>
+    <section class="metrics" aria-label="Görev özeti">
+      <div class="metric"><span>Açık görevler</span><strong id="open-stat">0</strong><small>Bir sonraki adımını seç.</small></div>
+      <div class="metric"><span>Bugün bekleyen</span><strong id="today-stat">0</strong><small>Bugüne ayırdığın işler.</small></div>
+      <div class="metric"><span>Tamamlanan</span><strong id="done-stat">0</strong><small>Her adım bir ilerleme.</small></div>
+      <div class="metric progress-metric"><span>Tamamlanma oranı</span><strong id="progress-stat">0<em>%</em></strong><div class="progress-track"><div id="progress-bar"></div></div></div>
+    </section>
+    <section class="task-panel" aria-labelledby="list-title">
+      <div class="panel-heading"><div><h2 id="list-title">Görevlerin</h2><span id="visible-count">Yükleniyor…</span></div><button class="text-button" id="refresh" aria-label="Görevleri yenile">↻ Yenile</button></div>
+      <div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Görevlerde ara…" aria-label="Görevlerde ara"></label><label class="filter-label"><span class="sr-only">Durum filtresi</span><select id="status-filter"><option value="">Tüm durumlar</option><option value="TODO">Yapılacak</option><option value="IN_PROGRESS">Devam ediyor</option><option value="COMPLETED">Tamamlandı</option></select></label><label class="filter-label"><span class="sr-only">Öncelik filtresi</span><select id="priority-filter"><option value="">Tüm öncelikler</option><option value="HIGH">Yüksek</option><option value="MEDIUM">Orta</option><option value="LOW">Düşük</option></select></label></div>
+      <div id="load-error" class="error-banner" role="alert" hidden></div>
+      <div id="task-list" aria-busy="true"></div>
+      <div id="empty-state" class="empty-state" hidden><div class="empty-icon">✓</div><h3 id="empty-title">Yeni bir başlangıca yer var.</h3><p id="empty-description">İlk görevini ekle, gününü adım adım planla.</p><button class="secondary" id="empty-add">İlk görevini ekle</button></div>
+      <footer class="panel-footer"><span>Bir işi bitirince soldaki kutuyu işaretle.</span><span id="remaining-label"></span></footer>
+    </section>
+    <p class="bottom-note">Her şeyi aynı anda yapmak zorunda değilsin.</p>
+  </main>
+</div>
+<dialog id="task-dialog" aria-labelledby="dialog-title">
+  <form id="task-form"><div class="dialog-header"><div><p class="eyebrow">BİR SONRAKİ ADIM</p><h2 id="dialog-title">Yeni görev</h2></div><button type="button" id="close-dialog" class="icon-button" aria-label="Pencereyi kapat">✕</button></div>
+    <label class="field">Görev başlığı <span class="required">*</span><input id="title" name="title" required maxlength="200" placeholder="Örneğin: Spring Boot çalış"></label>
+    <label class="field">Açıklama<textarea id="description" name="description" maxlength="5000" rows="3" placeholder="Eklemek istediğin ayrıntılar…"></textarea></label>
+    <div class="form-grid"><label class="field">Son tarih<input id="dueDate" name="dueDate" type="datetime-local"></label><label class="field">Tahmini süre (dakika)<input id="estimatedMinutes" name="estimatedMinutes" type="number" min="1" step="1" max="2147483647" placeholder="Örneğin: 45"></label><label class="field">Öncelik<select id="priority" name="priority"><option value="MEDIUM">Orta</option><option value="HIGH">Yüksek</option><option value="LOW">Düşük</option></select></label><label class="field" id="status-field" hidden>Durum<select id="status" name="status"><option value="TODO">Yapılacak</option><option value="IN_PROGRESS">Devam ediyor</option><option value="COMPLETED">Tamamlandı</option></select></label></div>
+    <p id="form-error" class="form-error" role="alert" hidden></p><div class="dialog-footer"><button type="button" class="secondary" id="cancel-dialog">Vazgeç</button><button type="submit" class="primary" id="save-task">Görevi ekle</button></div>
+  </form>
+</dialog>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body></html>

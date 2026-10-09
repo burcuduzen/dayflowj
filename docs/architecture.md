@@ -2,11 +2,11 @@
 
 ## Amaç ve kapsam
 
-Tek kullanıcılı, yerel çalışan bir üretkenlik uygulaması. Notlar, görevler, takvim, hatırlatıcılar, odaklanma oturumları, verimlilik analizi ve otomatik planlama içerir. Bu belge hedef mimariyi tarif eder; görev API’si uygulanmıştır, diğer özellikler henüz uygulanmamıştır. Spring Boot başlangıç projesi backend klasörüne eklenmiştir.
+Tek kullanıcılı, yerel çalışan bir üretkenlik uygulaması. Notlar, görevler, takvim, hatırlatıcılar, odaklanma oturumları, verimlilik analizi ve otomatik planlama içerir. Bu belge hedef mimariyi tarif eder; görev API’si ve görev arayüzü uygulanmıştır, diğer özellikler henüz uygulanmamıştır. Spring Boot başlangıç projesi backend klasörüne eklenmiştir.
 
 ## Çalışma düzeni
 
-Frontend (HTML/CSS/JavaScript) REST API üzerinden tek Spring Boot backend ile iletişim kurar. Backend Spring Data JPA aracılığıyla dosya tabanlı H2 veritabanına erişir. Her iki süreç yerel bilgisayarda çalışır. Backend yalnızca yerel arayüzde dinleyecek şekilde yapılandırılmalıdır.
+Frontend (HTML/CSS/JavaScript) REST API üzerinden tek Spring Boot backend ile iletişim kurar. Backend Spring Data JPA aracılığıyla dosya tabanlı H2 veritabanına erişir. Frontend kaynakları repoda ayrı klasördedir; Maven bu dosyaları backend’in statik kaynaklarına kopyalar. Tarayıcı arayüz ve API için aynı yerel adresi kullanır. Tek backend süreci yeterlidir. Backend yalnızca yerel arayüzde dinleyecek şekilde yapılandırılmalıdır.
 
 ## Backend katmanları
 

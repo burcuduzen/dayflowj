@@ -25,3 +25,5 @@ Kaynak dosyaları `src/main/resources/`, backend testleri `src/test/java/com/bur
 Uygulanan modül `task`: Task, TaskController, TaskService, TaskRepository ve DTO sınıfları. H2 dosya tabanlı yapılandırıldı; yerel veritabanı dosyaları Git'e eklenmeyecek.
 
 API örnekleri: [Görev API’si](../docs/task-api.md).
+
+Frontend dosyaları Maven resources ayarıyla statik kaynaklara kopyalanır. Backend’i başlattıktan sonra http://127.0.0.1:8080 adresinden görev arayüzüne ulaşılır.

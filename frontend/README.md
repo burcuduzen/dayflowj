@@ -1,16 +1,25 @@
 # Frontend
 
-Bu klasör HTML, CSS ve JavaScript arayüzü için ayrılmıştır. Henüz çalışan ekran bulunmuyor.
+HTML, CSS ve JavaScript ile görev yönetimi arayüzü. Harici font, CDN, framework veya npm kurulumu gerekmez.
 
-## Planlanan dosyalar
+## Çalıştırma
 
-- `index.html`: ana ekran.
-- `css/styles.css`: görünüm.
-- `js/api.js`: backend HTTP istekleri ve hata işleme.
-- `js/app.js`: uygulama başlangıcı ve ekran geçişleri.
-- `js/tasks.js`: görev formu, liste ve tamamlanma işlemleri.
-- `js/notes.js`: not işlemleri.
-- `js/calendar.js`: takvim görünümü.
-- `js/focus.js`: odaklanma sayacı ve oturum kaydı.
+Proje kökünden:
 
-İlk ekran görev ekleme, listeleme, düzenleme, silme ve tamamlama işlemlerini destekleyecek. Frontend yerel HTTP sunucusunda çalışacak; backend farklı portta çalışırsa yalnızca kullanılan yerel frontend adresi için CORS yapılandırılacak.
+```sh
+cd backend
+./mvnw spring-boot:run
+```
+
+Tarayıcıda http://127.0.0.1:8080 aç. Maven, frontend dosyalarını backend’in statik kaynaklarına kopyalar. Ayrı frontend sunucusu veya CORS ayarı gerekmez. Dosyalar değiştiğinde backend’i yeniden başlat.
+
+## Dosyalar
+
+- `index.html`: görev listesi, filtreler ve görev formu.
+- `css/styles.css`: responsive görünüm.
+- `js/api.js`: REST API istemcisi ve hata yanıtları.
+- `js/app.js`: görev ekleme, düzenleme, silme, durum değiştirme, arama ve filtreler.
+
+Bugün ve Yaklaşanlar görünümleri açık görevleri son tarihlerine göre kullanıcının yerel saat diliminde filtreler. Görev formundaki yerel tarih API’ye ISO saat dilimli tarih olarak gönderilir. Tamamlanma oranı tüm görevler üzerinden hesaplanır. Görev içerikleri düz metin olarak gösterilir.
+
+Notlar, takvim etkinlikleri ve focus mode henüz uygulanmadı.
