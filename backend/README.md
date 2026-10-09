@@ -4,7 +4,7 @@ Gönderilen Spring Initializr projesi bu klasöre yerleştirildi. Java 17, Sprin
 
 Uygulama sınıfı `com.burcuduzen.dayflow.DayflowApplication`, proje adı `dayflowj` olarak düzenlendi. Yapılandırma `src/main/resources/application.properties` içindedir. Backend localhost üzerinde çalışır; H2 dosya tabanlıdır.
 
-Çalıştırma komutları [ana README](../README.md#backendi-çalıştırma) içindedir. Görev, not ve hatırlatıcı API’leri uygulandı. Diğer modüller henüz uygulanmadı.
+Çalıştırma komutları [ana README](../README.md#backendi-çalıştırma) içindedir. Görev, not, hatırlatıcı, odak oturumu ve verimlilik analizi API’leri uygulandı. Diğer modüller henüz uygulanmadı.
 
 ## Paket düzeni
 
@@ -12,11 +12,11 @@ Uygulama sınıfı `com.burcuduzen.dayflow.DayflowApplication`, proje adı `dayf
 
 - `task`: görev yönetimi; `dto` API istek ve yanıtları.
 - `note`: not yönetimi.
+- `focus`: odak oturumlarını başlatma, duraklatma, devam ettirme, tamamlama ve süre kaydı.
+- `analytics`: görev tamamlamaları ve odak kayıtlarından günlük verimlilik özeti.
 - `calendar`: sabit etkinlikler ve takvim görünümü için veri.
 - `reminder`: hatırlatma zamanları ve bildirim durumu.
-- `focus`: odaklanma oturumları ve gerçekleşen süre.
 - `planning`: görevler için plan önerileri.
-- `analytics`: görev ve odaklanma kayıtlarından raporlar.
 - `common/config`: ortak yapılandırmalar.
 - `common/exception`: ortak hata yönetimi.
 

@@ -12,6 +12,9 @@
 - Uygulama içi hatırlatma; desteklenen tarayıcılarda kullanıcı izin verirse masaüstü bildirimi.
 - Hatırlatmayı kapatma ve 5, 10, 30 dakika erteleme. Erteleme veritabanında saklanır.
 - Her gün, hafta veya ay tekrarlayan görev. Sonraki görev mevcut görev tamamlandığında oluşur.
+- Backend odak oturumları: isteğe bağlı göreve bağlama, duraklatma, devam ettirme ve tamamlama.
+- Odak ve mola süreleri sunucu zamanına göre hesaplanır; aynı anda yalnızca bir aktif oturum olabilir.
+- Günlük verimlilik analizi: tamamlanan görev, gerçekleşen odak süresi, tahmini süre ve süre farkı.
 
 ## Streak ve e-posta
 
@@ -35,11 +38,34 @@ Hatırlatıcı son tarihte çalışır; ayrı erken hatırlatma zamanı henüz y
 - Günlük/haftalık takvim artışları yerel saati yaz saati değişimleri boyunca korur; var olmayan yerel saatler Java saat dilimi kurallarına göre ileri kaydırılabilir.
 - Aylık tekrarda kısa aylarda son geçerli gün kullanılır. Yeni oluşan görev kendi tarihinden tekrar eder.
 
+## Focus API
+
+| Yöntem | Yol | İşlem |
+|---|---|---|
+| `GET` | `/api/focus-sessions` | Tüm odak oturumlarını listeler |
+| `GET` | `/api/focus-sessions/active` | Aktif oturumu döndürür; yoksa `204` |
+| `POST` | `/api/focus-sessions` | Oturum başlatır; gövde isteğe bağlı olarak `{"taskId": 1}` olabilir |
+| `POST` | `/api/focus-sessions/{id}/pause` | Çalışan oturumu duraklatır |
+| `POST` | `/api/focus-sessions/{id}/resume` | Duraklatılmış oturumu devam ettirir |
+| `POST` | `/api/focus-sessions/{id}/complete` | Oturumu tamamlar |
+
+Durumla uyumsuz işlemler ve ikinci aktif oturum başlatma denemesi `409` döndürür. Diğer korumalı API işlemlerinde olduğu gibi mutasyon isteklerinde `X-DayFlowJ-Request: 1` başlığı ve doğrulanmış oturum gerekir.
+
+## Analiz API
+
+`GET /api/analytics` varsayılan olarak kullanıcının saat dilimindeki son 7 günü döndürür. `from`, `to` ve `timeZone` parametreleriyle en fazla 366 günlük aralık istenebilir:
+
+```text
+/api/analytics?from=2026-10-01&to=2026-10-09&timeZone=Europe/Istanbul
+```
+
+Yanıt hem toplamları hem de boş günler dahil günlük satırları içerir. `varianceMinutes`, gerçekleşen odak dakikasından tamamlanan görevlerin tahmini dakikalarının çıkarılmasıyla hesaplanır. Silinmiş bir görevin tamamlama geçmişi korunur ancak tahmini süresi artık bulunamadığı için analize `0` dakika olarak girer. Tamamlanmış odak oturumunun süresi, oturumun bittiği yerel güne yazılır.
+
 ## Henüz uygulanmayan özellikler
 
-- Focus mode ve odaklanma kayıtları.
+- Focus mode arayüzü ve zamanlayıcı ekranı.
 - Kişisel günlük hedef ve hedef kutlaması.
-- Gerçek sürelerden verimlilik analizi.
+- Verimlilik analizi arayüzü ve grafikler.
 - Otomatik planlama.
 - Doğal dille görev oluşturma.
 - Takvimde görev dışı sabit etkinlikler.
