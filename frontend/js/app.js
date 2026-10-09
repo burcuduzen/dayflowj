@@ -1,4 +1,4 @@
-import { taskApi, noteApi, reminderApi, progressApi, emailApi } from './api.js';
+import { taskApi, noteApi, reminderApi, progressApi, emailApi, authApi } from './api.js';
 
 const $ = id => document.getElementById(id);
 const state = { tasks: [], view: 'CALENDAR', loading: true, loaded: false, editing: null, saving: false, busy: new Set() };
@@ -14,6 +14,10 @@ const viewLabels = {
   COMPLETED: ['İlerlediğini gör.', 'Bitirdiğin işler, attığın adımlar.', 'Tamamlanan görevler']
 };
 let toastTimer;
+let accountReady = false;
+let accountExists = false;
+let authBusy = false;
+let mailReady = false;
 let calendarDate = new Date();
 let selectedDate = new Date();
 let agendaSaving = false;
@@ -139,6 +143,7 @@ function renderTask(task) {
   return row;
 }
 async function loadTasks() {
+  if (!accountReady) return;
   if (state.saving || state.busy.size || state.loading && state.loaded) return;
   state.loading = true; $('load-error').hidden = true; render();
   try { state.tasks = await taskApi.list(); state.loaded = true; }
@@ -248,7 +253,7 @@ document.querySelectorAll('[data-view]').forEach(button => button.addEventListen
   if (state.view === 'NOTES') loadNotes();
   render();
 }));
-setInterval(() => { if (!state.loading) render(); }, 60000);
+setInterval(() => { if (accountReady && !state.loading) render(); }, 60000);
 loadTasks();
 
 const noteState = { notes: [], loading: false, loaded: false, editing: null, saving: false };
@@ -259,6 +264,7 @@ const notified = new Set();
 try { JSON.parse(sessionStorage.getItem('dayflow-notified') || '[]').forEach(key => notified.add(key)); } catch { /* storage is optional */ }
 
 async function loadNotes() {
+  if (!accountReady) return;
   if (noteState.loading || noteState.saving) return;
   noteState.loading = true; $('note-error').hidden = true; renderNotes();
   try { noteState.notes = await noteApi.list(); noteState.loaded = true; }
@@ -407,6 +413,7 @@ $('enable-notifications').onclick = async () => {
   await Notification.requestPermission(); updateNotificationButton();
 };
 async function pollReminders() {
+  if (!accountReady) return;
   if (reminderPolling) return;
   reminderPolling = true;
   try {
@@ -457,6 +464,7 @@ let emailBusy = false;
 let emailConfigured = false;
 let emailSavedRecipient = '';
 async function loadProgress() {
+  if (!accountReady) return;
   if (progressLoading) return;
   progressLoading = true;
   try {
@@ -480,7 +488,7 @@ async function openEmail() {
     const settings = await emailApi.get();
     emailConfigured=settings.smtpConfigured;emailSavedRecipient=settings.recipient || '';
     $('email-recipient').value=emailSavedRecipient;$('email-enabled').checked=settings.enabled;
-    $('email-connection').textContent=emailConfigured ? 'SMTP bağlantı ayarları hazır. Test mailiyle gönderimi kontrol edebilirsin.' : 'SMTP henüz ayarlanmadı. Adresini kaydedebilir, yerel kurulumdan sonra gönderimi başlatabilirsin.';
+    $('email-connection').textContent=emailConfigured ? 'Bildirimler hesabının doğrulanmış mail adresine gönderilecek.' : 'DayFlowJ mail göndericisi şu anda hazır değil.';
   } catch(error) {$('email-error').textContent=error.message;$('email-error').hidden=false;}
   finally {setEmailBusy(false);}
 }
@@ -489,18 +497,17 @@ $('close-email').onclick=()=>{if(!emailBusy)$('email-dialog').close();};
 $('email-dialog').addEventListener('cancel',event=>{if(emailBusy)event.preventDefault();});
 $('email-form').addEventListener('submit',async event=>{
   event.preventDefault();if(emailBusy)return;
-  const recipient=$('email-recipient').value.trim();const enabled=$('email-enabled').checked;
+  const enabled=$('email-enabled').checked;
   setEmailBusy(true);$('email-error').hidden=true;
   try {
-    const settings=await emailApi.save({recipient,enabled});emailSavedRecipient=settings.recipient;emailConfigured=settings.smtpConfigured;
-    notify(enabled && !emailConfigured ? 'Adres kaydedildi. Gönderim için SMTP kurulumunu tamamla.' : 'E-posta tercihleri kaydedildi.');
+    const settings=await emailApi.save({enabled});emailSavedRecipient=settings.recipient;emailConfigured=settings.smtpConfigured;
+    notify(enabled && !emailConfigured ? 'Tercihin kaydedildi. DayFlowJ mail göndericisi hazır olduğunda bildirim alabilirsin.' : 'E-posta tercihleri kaydedildi.');
     $('email-dialog').close();
   }catch(error){$('email-error').textContent=error.message;$('email-error').hidden=false;}
   finally{setEmailBusy(false);}
 });
 $('test-email').onclick=async()=>{
   if(emailBusy)return;
-  if($('email-recipient').value.trim()!==emailSavedRecipient){$('email-error').textContent='Yeni adresi önce Kaydet butonuyla kaydet.';$('email-error').hidden=false;return;}
   setEmailBusy(true);$('email-error').hidden=true;
   try{await emailApi.test();notify('Test maili gönderildi. Gelen kutunu kontrol et.');}
   catch(error){$('email-error').textContent=error.message;$('email-error').hidden=false;}
@@ -509,3 +516,69 @@ $('test-email').onclick=async()=>{
 loadProgress();
 setInterval(loadProgress,60000);
 window.addEventListener('focus',loadProgress);
+
+function renderAuth() {
+  $('planner').hidden = !accountReady;
+  $('auth-screen').hidden = accountReady;
+  $('auth-title').textContent = accountExists ? 'Tekrar hoş geldin' : 'Gününü birlikte planlayalım';
+  $('auth-description').textContent = accountExists ? 'Doğruladığın mail adresinle giriş yap.' : 'Mailinle kaydol, adresini doğrula ve görev hatırlatmalarını al.';
+  $('auth-reminders-label').hidden = accountExists;
+  $('auth-resend').hidden = !accountExists;
+  $('auth-password').autocomplete = accountExists ? 'current-password' : 'new-password';
+  $('auth-submit').textContent = accountExists ? 'Giriş yap' : 'Kayıt ol';
+  $('auth-submit').disabled = authBusy || (!accountExists && !mailReady);
+  $('auth-resend').disabled = authBusy || !mailReady;
+  if (!accountExists && !mailReady) {
+    $('auth-description').textContent = 'DayFlowJ mail göndericisi henüz kurulmadı. Kurulum tamamlandığında buradan mailinle kayıt olabilirsin.';
+  }
+}
+async function enterPlanner(status) {
+  accountReady = true; accountExists = true; mailReady = status.mailReady;
+  $('auth-password').value=''; renderAuth();
+  await loadTasks(); await pollReminders(); await loadProgress();
+}
+async function initializeAccount() {
+  try {
+    const status = await authApi.status(); accountExists=status.accountExists;mailReady=status.mailReady;
+    if (status.authenticated) await enterPlanner(status); else renderAuth();
+  } catch(error) { $('auth-error').textContent=error.message;$('auth-error').hidden=false;$('auth-submit').disabled=true; }
+  const verification = new URLSearchParams(location.search).get('verification');
+  if (verification) {
+    $('auth-message').hidden=false;
+    $('auth-message').textContent=verification==='success' ? 'Mailin doğrulandı. Şimdi giriş yapabilirsin.' : 'Bağlantının süresi dolmuş veya daha önce kullanılmış. Giriş yapmayı dene; gerekirse yeni doğrulama maili iste.';
+    history.replaceState(null,'',location.pathname);
+  }
+}
+$('auth-form').addEventListener('submit',async event=>{
+  event.preventDefault(); if(authBusy)return;
+  authBusy=true;renderAuth();$('auth-error').hidden=true;
+  const credentials={email:$('auth-email').value.trim(),password:$('auth-password').value};
+  try {
+    if(accountExists) await enterPlanner(await authApi.login(credentials));
+    else {
+      await authApi.register({...credentials,reminders:$('auth-reminders').checked});
+      accountExists=true;$('auth-password').value='';$('auth-message').hidden=false;
+      $('auth-message').textContent='Doğrulama maili gönderildi. Bu bilgisayarda mailindeki bağlantıyı aç, ardından giriş yap. Spam klasörünü de kontrol edebilirsin.';
+    }
+  } catch(error) { $('auth-error').textContent=error.message;$('auth-error').hidden=false; }
+  finally {authBusy=false;renderAuth();}
+});
+$('auth-resend').onclick=async()=>{
+  if(authBusy || !$('auth-form').reportValidity())return;
+  authBusy=true;renderAuth();$('auth-error').hidden=true;
+  try {
+    await authApi.resend({email:$('auth-email').value.trim(),password:$('auth-password').value});
+    $('auth-message').textContent='Adresin henüz doğrulanmadıysa yeni doğrulama maili gönderildi.';$('auth-message').hidden=false;
+  }catch(error){$('auth-error').textContent=error.message;$('auth-error').hidden=false;}
+  finally{authBusy=false;renderAuth();}
+};
+$('logout').onclick=async()=>{
+  try{await authApi.logout();location.reload();}catch(error){notify(error.message,true);}
+};
+window.addEventListener('dayflow-auth-required',()=>{
+  if(!accountReady)return;
+  accountReady=false;state.tasks=[];reminders=[];noteState.notes=[];
+  document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());
+  renderAuth();$('auth-message').textContent='Oturumun sona erdi. Tekrar giriş yap.';$('auth-message').hidden=false;
+});
+initializeAccount();

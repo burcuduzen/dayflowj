@@ -1,4 +1,6 @@
-# Yerel e-posta kurulumu
+# DayFlowJ gönderici hesabı kurulumu
+
+Bu belge geliştirici içindir. Kullanıcı yalnızca maili ve DayFlowJ parolasıyla kayıt olur, doğrulama bağlantısını açar ve bildirim tercihini seçer. Kullanıcının Gmail parolası veya SMTP bilgileri istenmez. Maili DayFlowJ için ayrılmış bir gönderici hesabı gönderir.
 
 DayFlowJ, SMTP üzerinden e-posta gönderir. Gönderici hesabın SMTP erişimine izin vermelidir; bazı sağlayıcılar uygulama parolası, kurum izni veya OAuth gerektirir. Bu sürüm kullanıcı adı ve parola/uygulama parolası ile SMTP destekler; OAuth veya gelen kutusu okuma içermez.
 
@@ -19,7 +21,7 @@ export DAYFLOW_MAIL_SSL='false'
 Parolayı terminal geçmişine yazmadan gir:
 
 ```sh
-read -s DAYFLOW_MAIL_PASSWORD
+read -s "DAYFLOW_MAIL_PASSWORD?Gönderici uygulama parolası: "
 export DAYFLOW_MAIL_PASSWORD
 ```
 
@@ -27,13 +29,22 @@ export DAYFLOW_MAIL_PASSWORD
 
 Port 587 için STARTTLS (`DAYFLOW_MAIL_SSL=false`), sağlayıcı 465/implicit TLS istiyorsa port 465 ve `DAYFLOW_MAIL_SSL=true` kullan. TLS kapalı bağlantı desteklenmez. Doğru değerler sağlayıcının belgelerinden alınmalıdır.
 
-## Arayüzde etkinleştirme
+## Kullanıcı akışı
 
-1. Üstte E-posta butonuna bas.
-2. Hatırlatma alacağın adresi yaz, e-posta gönder seçeneğini işaretle ve Kaydet’e bas.
-3. E-posta ayarlarını yeniden açıp Test maili gönder’e bas. Spam klasörünü de kontrol et.
+1. DayFlowJ açıldığında mail ve en az 12 karakterlik DayFlowJ parolasıyla kayıt ol. Görev hatırlatmalarını kayıt sırasında seç.
+2. Gelen doğrulama bağlantısını uygulamanın çalıştığı bilgisayarda aç. Bağlantı 1 saat geçerlidir ve tek kullanımlıktır.
+3. Doğrulamadan sonra mail ve DayFlowJ parolasıyla giriş yap. Görevlerini oluştur.
+4. E-posta ekranında tercihlerini aç/kapat veya test maili gönder. Alıcı adresi doğrulanmış hesabından gelir ve bu ekranda değiştirilmez.
 
-SMTP ayarlarının hazır görünmesi kimlik doğrulamasının başarılı olduğunu kanıtlamaz; gerçek gönderim test mailiyle kontrol edilir. SMTP eksikse tercih kaydedilebilir ancak e-posta gönderilmez. Gönderim başlaması için hem tercih açık hem SMTP yapılandırılmış olmalıdır.
+Gönderici kurulmamışsa kayıt kapalıdır ve ekranda kurulumun tamamlanmadığı belirtilir. Gerçek SMTP gönderimi olmadan doğrulama başarılı gösterilmez. Gönderici ayarlarının mevcut olması başarılı kimlik doğrulamasını kanıtlamaz; SMTP hata verirse kayıt geri alınır. Mail gönderiminin test edilmesi gerekir.
+
+## Yerel hesap ve oturum
+
+Bu sürüm her yerel kurulumda tek hesap destekler. Mevcut görevler, notlar ve streak geçmişi korunur ve bu yerel hesabın kullanımı için kalır. Çok kullanıcılı hizmet, kullanıcılar arasında veri ayrımı, parola sıfırlama ve mail adresi değiştirme henüz yoktur. Hesabı unuttuğunda veritabanını silme; veri kaybı olur.
+
+API erişimi doğrulanmış hesap ve oturum gerektirir. Parolalar PBKDF2-HMAC-SHA256 (600.000 yineleme ve rastgele salt) ile özetlenir. Doğrulama tokenının yalnızca SHA-256 özeti veritabanındadır. Oturum HttpOnly, SameSite=Lax çereziyle tutulur; girişte eski oturum yenilenir ve çıkışta silinir. Yazma istekleri aynı kaynak denetimi ve özel istek başlığı gerektirir. Giriş/kayıt/yeniden gönderim istekleri dakika başına sınırlanır. Yerel HTTP ve localhost ile sınırlıdır; internete açılacak bir çok kullanıcı sistemi için tasarlanmamıştır.
+
+Doğrulama bağlantısının adresi varsayılan olarak `http://127.0.0.1:8080` olur. Farklı yerel port kullanıyorsan geliştirici `DAYFLOW_PUBLIC_URL` değerini de değiştirmelidir. Bağlantı telefonda uygulamayı açamaz; bu bilgisayarda açılmalıdır. Oturum en fazla 8 saat hareketsiz kalır. Gönderimler oturum kapalıyken de backend açıksa çalışır.
 
 ## Gönderim davranışı
 

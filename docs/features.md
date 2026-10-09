@@ -17,7 +17,7 @@
 
 Günlük en az bir farklı görevin ilk tamamlanmasıyla devam serisi oluşur. Aynı görevi yeniden açıp tamamlamak yeni bir gün kazandırmaz. Tamamlama geçmişi görev silinse de saklanır. Önceki sürümlerde tamamlanmış ve hâlâ kayıtlı görevler geçmişe alınır. Günler tarayıcının saat diliminde hesaplanır; seyahatte saat dilimi değişirse gün dağılımı değişebilir. Bugün tamamlanmadıysa dünün serisi bugün boyunca korunur; bir gün atlandığında sıfırlanır. En uzun seri ayrıca saklanan geçmişten hesaplanır.
 
-SMTP ile e-posta hatırlatması, alıcı adresi ve aç/kapat ayarı, test maili ve tekrar gönderim kayıtları uygulandı. Gerçek gönderim için yerel SMTP kurulumu gerekir: [E-posta kurulumu](email-setup.md).
+Tek yerel hesap için mail ve parolayla kayıt, tek kullanımlık mail doğrulama, oturumla giriş/çıkış eklendi. Bildirimler doğrulanmış hesap adresine gider. Kullanıcıya SMTP kurulumu sorulmaz; geliştirici DayFlowJ gönderici hesabını bir kez kurar. Aç/kapat ayarı, test maili ve tekrar gönderim kayıtları uygulandı. Gönderici kurulumu: [E-posta kurulumu](email-setup.md).
 
 ## Hatırlatma davranışı
 
@@ -49,7 +49,7 @@ Parola kasası ertelenmiştir ve mevcut kapsamda değildir.
 ## Kontrol adımları
 
 1. Backend klasöründe `./mvnw test` ve ardından `./mvnw spring-boot:run` çalıştır.
-2. http://127.0.0.1:8080 aç. Son tarihi bir dakika sonrası olan görev oluştur; bildirim izni ver.
+2. Göndericiyi kur, http://127.0.0.1:8080 aç, kayıt ol, mailini doğrula ve giriş yap. Son tarihi bir dakika sonrası olan görev oluştur; bildirim izni ver.
 3. Son tarihten sonra uygulama içi hatırlatmayı kontrol et; 5 dakika ertele. Backend’i yeniden başlatıp erteleme kaydının kalıcılığını kontrol et.
 4. Her gün tekrarlayan bir görevi tamamla. Yaklaşanlar veya takvimde yeni görevi kontrol et. Önceki görevi yeniden açıp tamamla; fazladan kayıt oluşmamalı.
 5. Not ekle, düzenle ve sayfayı yenile. Kaydın kalıcılığını kontrol et.

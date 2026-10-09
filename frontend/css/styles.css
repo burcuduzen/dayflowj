@@ -66,3 +66,5 @@
 
 .email-help{margin-top:20px;min-height:0;font-size:9px}.email-help code{overflow-wrap:anywhere}.streak-chip{background:#f8d086}
 @media(max-width:520px){.toplinks .chip:first-child{display:none}}
+
+[hidden]{display:none!important}.auth-screen{min-height:85vh;display:grid;place-items:center;padding:32px 16px}.auth-card{width:min(100%,480px);padding:32px;background:var(--paper,#fff8e2);border:3px solid var(--ink);box-shadow:var(--shadow)}.auth-card .brand{display:inline-block;margin-bottom:30px}.auth-card h1{font-size:16px;line-height:1.8;margin:12px 0}.auth-card .hint{font-size:12px;line-height:1.9}.auth-card form{margin-top:24px}.auth-card .primary{width:100%;margin-top:12px}.auth-card .text-button{display:block;margin:18px auto 0}.auth-card input[type=password],.auth-card input[type=email]{width:100%;box-sizing:border-box;padding:12px;font:inherit;border:2px solid var(--ink);background:white}.auth-card .reminder-setting{font-size:12px;line-height:1.7}input[readonly]{background:#eee8d6;color:var(--muted)}

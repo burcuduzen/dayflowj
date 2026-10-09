@@ -60,3 +60,5 @@ Testleri çalıştırmak için backend klasöründe `./mvnw test` (Windows: `.\m
 Görev API’si kullanım örnekleri: [Görev API’si](docs/task-api.md).
 
 Güncel kapsam ve bildirim sınırları: [Özellik durumu](docs/features.md). Focus mode, kişisel günlük hedefler, doğal dil, otomatik planlama ve verimlilik analizi henüz uygulanmadı. Devam serisi ve SMTP e-posta hatırlatmaları eklendi. E-posta için [yerel kurulum](docs/email-setup.md) gerekir.
+
+Yerel hesap: mail ve parola ile kayıt, mail doğrulama ve oturumla giriş. Her kurulumda tek hesap vardır; eski görevler korunur. Mail gönderimi için geliştirici DayFlowJ gönderici hesabını bir kez kurmalıdır: [Kurulum](docs/email-setup.md).

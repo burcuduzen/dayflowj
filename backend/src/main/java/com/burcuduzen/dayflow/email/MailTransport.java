@@ -23,6 +23,7 @@ public class MailTransport {
         sender.setDefaultEncoding("UTF-8");
         var properties = sender.getJavaMailProperties();
         properties.setProperty("mail.smtp.auth", "true");
+        properties.setProperty("mail.smtp.ssl.checkserveridentity", "true");
         properties.setProperty("mail.smtp.ssl.enable", Boolean.toString(ssl));
         properties.setProperty("mail.smtp.starttls.enable", Boolean.toString(!ssl));
         properties.setProperty("mail.smtp.starttls.required", Boolean.toString(!ssl));
