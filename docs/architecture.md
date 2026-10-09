@@ -2,7 +2,7 @@
 
 ## Amaç ve kapsam
 
-Tek kullanıcılı, yerel çalışan bir üretkenlik uygulaması. Notlar, görevler, takvim, hatırlatıcılar, odaklanma oturumları, verimlilik analizi ve otomatik planlama içerir. Bu belge hedef mimariyi tarif eder; özellikler henüz uygulanmamıştır.
+Tek kullanıcılı, yerel çalışan bir üretkenlik uygulaması. Notlar, görevler, takvim, hatırlatıcılar, odaklanma oturumları, verimlilik analizi ve otomatik planlama içerir. Bu belge hedef mimariyi tarif eder; özellikler henüz uygulanmamıştır. Spring Boot başlangıç projesi backend klasörüne eklenmiştir.
 
 ## Çalışma düzeni
 

@@ -4,7 +4,7 @@ A local productivity app with notes, calendar, smart reminders, focus sessions, 
 
 ## Proje durumu
 
-Bu repo başlangıç klasör yapısını ve mimari planını içerir. Henüz çalıştırılabilir uygulama, Spring Boot projesi veya kullanıcı arayüzü bulunmuyor.
+Bu repo Spring Boot başlangıç projesini, özellik klasörlerini ve mimari planını içerir. Henüz görev API’si veya kullanıcı arayüzü uygulanmadı.
 
 ## Hedef teknoloji yapısı
 
@@ -34,3 +34,25 @@ Boş klasörler Git tarafından takip edilsin diye `.gitkeep` dosyaları içerir
 7. Otomatik planlama ve akıllı hatırlatıcılar.
 
 Detaylar: [Mimari](docs/architecture.md), [Backend](backend/README.md), [Frontend](frontend/README.md).
+
+## Backend’i çalıştırma
+
+Java 17 kurulu olmalıdır. İlk çalıştırmada Maven ve bağımlılıkları indirmek için internet gerekir.
+
+macOS / Linux:
+
+```sh
+cd backend
+./mvnw spring-boot:run
+```
+
+Windows:
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+Backend `http://127.0.0.1:8080` adresinde çalışır. Henüz bir sayfa veya API endpoint’i bulunmadığı için kök adreste 404 yanıtı normaldir. H2 verileri backend klasöründen çalıştırıldığında `backend/data/` altında saklanır.
+
+Testleri çalıştırmak için backend klasöründe `./mvnw test` (Windows: `.\mvnw.cmd test`) kullan.

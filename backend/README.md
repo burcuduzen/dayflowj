@@ -1,8 +1,10 @@
 # Backend
 
-Bu klasör Java + Spring Boot backend için ayrılmıştır. Henüz Maven/Spring Boot projesi oluşturulmadı.
+Gönderilen Spring Initializr projesi bu klasöre yerleştirildi. Java 17, Spring Boot, Maven Wrapper, Web MVC, Spring Data JPA, Validation ve H2 bağımlılıkları bulunur. ZIP’teki Spring Boot ve Maven sürümleri korunmuştur.
 
-İlk adım: Spring Initializr üzerinden Maven projesi oluştur; Spring Web, Spring Data JPA, Validation ve H2 Database bağımlılıklarını ekle. Paket adı `com.burcuduzen.dayflow` olacak. Oluşan `pom.xml`, Maven Wrapper ve uygulama sınıfını bu klasöre yerleştir.
+Uygulama sınıfı `com.burcuduzen.dayflow.DayflowApplication`, proje adı `dayflowj` olarak düzenlendi. Yapılandırma `src/main/resources/application.properties` içindedir. Backend localhost üzerinde çalışır; H2 dosya tabanlıdır.
+
+Çalıştırma komutları [ana README](../README.md#backendi-çalıştırma) içindedir. Özellikler henüz uygulanmadı.
 
 ## Paket düzeni
 
