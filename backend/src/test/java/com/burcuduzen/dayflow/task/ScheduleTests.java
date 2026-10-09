@@ -30,14 +30,14 @@ class ScheduleTests {
         task.configureSchedule(Recurrence.DAILY, "Europe/Istanbul", true);
         when(repository.findForUpdate(1L)).thenReturn(Optional.of(task));
         when(repository.save(any(Task.class))).thenAnswer(i -> i.getArgument(0));
-        TaskService service = new TaskService(repository);
+        TaskService service = new TaskService(repository, mock(com.burcuduzen.dayflow.progress.ActivityRepository.class));
         service.updateStatus(1L, TaskStatus.COMPLETED);
         service.updateStatus(1L, TaskStatus.TODO);
         service.updateStatus(1L, TaskStatus.COMPLETED);
         verify(repository, times(1)).save(argThat(t -> t != task));
     }
     @Test void repeatNeedsDateAndValidZone() {
-        TaskService service = new TaskService(mock(TaskRepository.class));
+        TaskService service = new TaskService(mock(TaskRepository.class), mock(com.burcuduzen.dayflow.progress.ActivityRepository.class));
         assertThrows(org.springframework.web.server.ResponseStatusException.class,
             () -> service.create(new CreateTaskRequest("Tekrar", null, null, null, null, Recurrence.DAILY, true, "Europe/Istanbul")));
         assertThrows(org.springframework.web.server.ResponseStatusException.class,

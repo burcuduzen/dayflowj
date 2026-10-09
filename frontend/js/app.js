@@ -1,4 +1,4 @@
-import { taskApi, noteApi, reminderApi } from './api.js';
+import { taskApi, noteApi, reminderApi, progressApi, emailApi } from './api.js';
 
 const $ = id => document.getElementById(id);
 const state = { tasks: [], view: 'CALENDAR', loading: true, loaded: false, editing: null, saving: false, busy: new Set() };
@@ -206,7 +206,7 @@ async function saveTask(event) {
     if (!state.loaded) { state.loaded = true; }
   } catch (error) { $('form-error').textContent = error.message; $('form-error').hidden = false; }
   finally { setSaving(false); }
-  if (savedSuccessfully) await loadTasks();
+  if (savedSuccessfully) { await loadTasks(); await loadProgress(); }
   await pollReminders();
 }
 async function changeStatus(task) {
@@ -218,7 +218,7 @@ async function changeStatus(task) {
     notify(updated.status === 'COMPLETED' ? 'Bir adım daha tamamlandı.' : 'Görev yeniden açıldı.');
   } catch (error) { notify(error.message, true); }
   finally { state.busy.delete(task.id); render(); }
-  await loadTasks(); await pollReminders();
+  await loadTasks(); await pollReminders(); await loadProgress();
 }
 async function removeTask(task) {
   if (state.busy.has(task.id) || !window.confirm(`“${task.title}” görevini silmek istiyor musun?`)) return;
@@ -451,3 +451,68 @@ updateNotificationButton();
 pollReminders();
 setInterval(pollReminders,15000);
 window.addEventListener('focus', () => { pollReminders(); });
+
+let progressLoading = false;
+let emailBusy = false;
+let emailConfigured = false;
+let emailSavedRecipient = '';
+async function loadProgress() {
+  if (progressLoading) return;
+  progressLoading = true;
+  try {
+    const result = await progressApi.get(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul');
+    $('streak-count').textContent = result.currentStreak;
+    $('streak-best').textContent = result.longestStreak;
+    $('streak-message').textContent = result.completedToday ? 'Bugünün adımı tamam. Yarın serine devam et.'
+      : result.currentStreak > 0 ? 'Serini sürdürmek için bugün bir görev tamamla.' : 'Bugün bir görev tamamla, serini başlat.';
+    $('streak-week').replaceChildren(...result.week.map(day => {
+      const date = new Date(`${day.date}T12:00:00`);
+      const box = node('div', `streak-day${day.completed ? ' achieved' : ''}`);
+      box.title = date.toLocaleDateString('tr-TR');
+      box.setAttribute('aria-label', `${box.title}: ${day.completed ? 'görev tamamlandı' : 'görev tamamlanmadı'}`);
+      box.append(node('span','',date.toLocaleDateString('tr-TR',{weekday:'short'})),node('b','',day.completed?'✓':'·'));
+      return box;
+    }));
+  } catch { $('streak-message').textContent = 'Seri yüklenemedi. Backend bağlantısını kontrol et.'; }
+  finally { progressLoading = false; }
+}
+function setEmailBusy(busy) {
+  emailBusy=busy;
+  $('email-form').querySelectorAll('input,button').forEach(el=>el.disabled=busy);
+  if (!busy) $('test-email').disabled = !emailConfigured || !emailSavedRecipient;
+}
+async function openEmail() {
+  $('email-dialog').showModal();$('email-error').hidden=true;setEmailBusy(true);
+  try {
+    const settings = await emailApi.get();
+    emailConfigured=settings.smtpConfigured;emailSavedRecipient=settings.recipient || '';
+    $('email-recipient').value=emailSavedRecipient;$('email-enabled').checked=settings.enabled;
+    $('email-connection').textContent=emailConfigured ? 'SMTP bağlantı ayarları hazır. Test mailiyle gönderimi kontrol edebilirsin.' : 'SMTP henüz ayarlanmadı. Adresini kaydedebilir, yerel kurulumdan sonra gönderimi başlatabilirsin.';
+  } catch(error) {$('email-error').textContent=error.message;$('email-error').hidden=false;}
+  finally {setEmailBusy(false);}
+}
+$('open-email').onclick=openEmail;
+$('close-email').onclick=()=>{if(!emailBusy)$('email-dialog').close();};
+$('email-dialog').addEventListener('cancel',event=>{if(emailBusy)event.preventDefault();});
+$('email-form').addEventListener('submit',async event=>{
+  event.preventDefault();if(emailBusy)return;
+  const recipient=$('email-recipient').value.trim();const enabled=$('email-enabled').checked;
+  setEmailBusy(true);$('email-error').hidden=true;
+  try {
+    const settings=await emailApi.save({recipient,enabled});emailSavedRecipient=settings.recipient;emailConfigured=settings.smtpConfigured;
+    notify(enabled && !emailConfigured ? 'Adres kaydedildi. Gönderim için SMTP kurulumunu tamamla.' : 'E-posta tercihleri kaydedildi.');
+    $('email-dialog').close();
+  }catch(error){$('email-error').textContent=error.message;$('email-error').hidden=false;}
+  finally{setEmailBusy(false);}
+});
+$('test-email').onclick=async()=>{
+  if(emailBusy)return;
+  if($('email-recipient').value.trim()!==emailSavedRecipient){$('email-error').textContent='Yeni adresi önce Kaydet butonuyla kaydet.';$('email-error').hidden=false;return;}
+  setEmailBusy(true);$('email-error').hidden=true;
+  try{await emailApi.test();notify('Test maili gönderildi. Gelen kutunu kontrol et.');}
+  catch(error){$('email-error').textContent=error.message;$('email-error').hidden=false;}
+  finally{setEmailBusy(false);}
+};
+loadProgress();
+setInterval(loadProgress,60000);
+window.addEventListener('focus',loadProgress);

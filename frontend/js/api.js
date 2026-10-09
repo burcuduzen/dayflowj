@@ -35,3 +35,10 @@ export const reminderApi = {
   dismiss: id => request(`/api/reminders/${id}/dismiss`, { method: 'POST' }),
   snooze: (id, minutes) => request(`/api/reminders/${id}/snooze`, { method: 'POST', body: JSON.stringify({ minutes }) })
 };
+
+export const progressApi = { get: zone => request(`/api/progress?timeZone=${encodeURIComponent(zone)}`) };
+export const emailApi = {
+  get: () => request('/api/email/settings'),
+  save: data => request('/api/email/settings', {method:'PUT',body:JSON.stringify(data)}),
+  test: () => request('/api/email/test', {method:'POST'})
+};

@@ -13,6 +13,12 @@
 - Hatırlatmayı kapatma ve 5, 10, 30 dakika erteleme. Erteleme veritabanında saklanır.
 - Her gün, hafta veya ay tekrarlayan görev. Sonraki görev mevcut görev tamamlandığında oluşur.
 
+## Streak ve e-posta
+
+Günlük en az bir farklı görevin ilk tamamlanmasıyla devam serisi oluşur. Aynı görevi yeniden açıp tamamlamak yeni bir gün kazandırmaz. Tamamlama geçmişi görev silinse de saklanır. Önceki sürümlerde tamamlanmış ve hâlâ kayıtlı görevler geçmişe alınır. Günler tarayıcının saat diliminde hesaplanır; seyahatte saat dilimi değişirse gün dağılımı değişebilir. Bugün tamamlanmadıysa dünün serisi bugün boyunca korunur; bir gün atlandığında sıfırlanır. En uzun seri ayrıca saklanan geçmişten hesaplanır.
+
+SMTP ile e-posta hatırlatması, alıcı adresi ve aç/kapat ayarı, test maili ve tekrar gönderim kayıtları uygulandı. Gerçek gönderim için yerel SMTP kurulumu gerekir: [E-posta kurulumu](email-setup.md).
+
 ## Hatırlatma davranışı
 
 Frontend zamanı gelmiş hatırlatmaları 15 saniyede bir kontrol eder; pencereye geri dönüldüğünde de kontrol eder. Backend ve uygulama sekmesi açık olmalıdır. Bilgisayar veya tarayıcı kapalıyken bildirim gönderilmez. Tarayıcı arka planda zamanlayıcıları yavaşlatabilir. Uygulama tekrar açıldığında kaçırılan ve henüz kapatılmamış hatırlatmalar gösterilir.
@@ -32,7 +38,7 @@ Hatırlatıcı son tarihte çalışır; ayrı erken hatırlatma zamanı henüz y
 ## Henüz uygulanmayan özellikler
 
 - Focus mode ve odaklanma kayıtları.
-- Kişisel günlük hedef, devam serisi ve hedef kutlaması.
+- Kişisel günlük hedef ve hedef kutlaması.
 - Gerçek sürelerden verimlilik analizi.
 - Otomatik planlama.
 - Doğal dille görev oluşturma.

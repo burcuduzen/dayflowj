@@ -12,7 +12,10 @@ import org.springframework.http.HttpStatus;
 @Transactional
 public class TaskService {
     private final TaskRepository repository;
-    public TaskService(TaskRepository repository) { this.repository = repository; }
+    private final com.burcuduzen.dayflow.progress.ActivityRepository activities;
+    public TaskService(TaskRepository repository, com.burcuduzen.dayflow.progress.ActivityRepository activities) {
+        this.repository = repository; this.activities = activities;
+    }
 
     public TaskResponse create(CreateTaskRequest request) {
         validateSchedule(request.dueDate(), request.recurrence(), request.timeZone());
@@ -65,6 +68,9 @@ public class TaskService {
 
     private void afterStatusChange(Task task, boolean wasComplete) {
         if (!task.isComplete()) { if (wasComplete) task.restartReminder(); return; }
+        if (!wasComplete && task.getId() != null && !activities.existsById(task.getId())) {
+            activities.save(new com.burcuduzen.dayflow.progress.CompletionActivity(task.getId(), task.getCompletedAt()));
+        }
         task.dismissReminder();
         if (wasComplete || task.isRecurrenceSpawned() || task.getRecurrence() == Recurrence.NONE || task.getDueDate() == null) return;
         OffsetDateTime next = ScheduleCalculator.next(task.getDueDate(), task.getRecurrence(), task.getTimeZone(), Instant.now());

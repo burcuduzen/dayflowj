@@ -10,7 +10,7 @@ import static org.mockito.Mockito.*;
 
 class TaskServiceTests {
     private final TaskRepository repository = mock(TaskRepository.class);
-    private final TaskService service = new TaskService(repository);
+    private final TaskService service = new TaskService(repository, mock(com.burcuduzen.dayflow.progress.ActivityRepository.class));
 
     @Test
     void creationTrimsTitleAndDefaultsPriorityAndStatus() {
