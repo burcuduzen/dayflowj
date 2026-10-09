@@ -11,4 +11,5 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByStatusNotAndReminderAtLessThanEqualOrderByReminderAtAsc(TaskStatus status, java.time.OffsetDateTime now);
     List<Task> findAllByOrderByCreatedAtDescIdDesc();
     List<Task> findByStatusOrderByCreatedAtDescIdDesc(TaskStatus status);
+    List<Task> findByStatusNotOrderByCreatedAtAscIdAsc(TaskStatus status);
 }

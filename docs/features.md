@@ -15,6 +15,9 @@
 - Backend odak oturumları: isteğe bağlı göreve bağlama, duraklatma, devam ettirme ve tamamlama.
 - Odak ve mola süreleri sunucu zamanına göre hesaplanır; aynı anda yalnızca bir aktif oturum olabilir.
 - Günlük verimlilik analizi: tamamlanan görev, gerçekleşen odak süresi, tahmini süre ve süre farkı.
+- Görev dışı sabit takvim etkinlikleri için tarih aralığı sorgulamalı CRUD API.
+- Son tarih, öncelik ve tahmini süreye göre boş çalışma saatlerine görev yerleştiren plan önerisi API.
+- Önerilen blokları çakışma kontrolüyle topluca onaylama, listeleme ve kaldırma.
 
 ## Streak ve e-posta
 
@@ -61,14 +64,55 @@ Durumla uyumsuz işlemler ve ikinci aktif oturum başlatma denemesi `409` dönd�
 
 Yanıt hem toplamları hem de boş günler dahil günlük satırları içerir. `varianceMinutes`, gerçekleşen odak dakikasından tamamlanan görevlerin tahmini dakikalarının çıkarılmasıyla hesaplanır. Silinmiş bir görevin tamamlama geçmişi korunur ancak tahmini süresi artık bulunamadığı için analize `0` dakika olarak girer. Tamamlanmış odak oturumunun süresi, oturumun bittiği yerel güne yazılır.
 
+## Takvim etkinliği API
+
+| Yöntem | Yol | İşlem |
+|---|---|---|
+| `GET` | `/api/calendar-events` | Etkinlikleri başlangıç zamanına göre listeler |
+| `GET` | `/api/calendar-events?from=...&to=...` | Aralıkla çakışan etkinlikleri listeler |
+| `POST` | `/api/calendar-events` | Sabit etkinlik oluşturur |
+| `PUT` | `/api/calendar-events/{id}` | Etkinliği günceller |
+| `DELETE` | `/api/calendar-events/{id}` | Etkinliği siler |
+
+Başlangıç ve bitiş zamanları ISO-8601 saat dilimi ofsetiyle gönderilir. Bitiş başlangıçtan sonra olmalıdır. Aralık sorgularında `from` ve `to` birlikte verilir ve en fazla 366 gün istenebilir. Aralığın sınırından önce başlayan ancak aralık içinde devam eden etkinlikler de sonuçlara dahildir.
+
+## Otomatik planlama API
+
+`POST /api/planning/suggestions` açık görevler için en fazla 14 günlük bir plan önizlemesi üretir. Örnek gövde:
+
+```json
+{
+  "from": "2026-10-10",
+  "to": "2026-10-12",
+  "workStart": "09:00",
+  "workEnd": "18:00",
+  "timeZone": "Europe/Istanbul",
+  "taskIds": [1, 2, 3]
+}
+```
+
+`taskIds` verilmezse henüz planlanmamış tüm açık görevler değerlendirilir. Görevler önce son tarihe, sonra önceliğe göre işlenir. Motor sabit takvim etkinlikleri ve önceden onaylanmış planlarla çakışmaz, geçmiş saate öneri koymaz ve görevi tek parça halinde yerleştirir. Tahmini süresi olmayan görevler `MISSING_ESTIMATE`, uygun boşluğa sığmayanlar `NO_AVAILABLE_SLOT` nedeni ile `unscheduled` listesinde döner.
+
+Öneriler `POST /api/planning/blocks/approve` ile topluca kalıcı hale getirilir:
+
+```json
+{
+  "blocks": [
+    { "taskId": 1, "startAt": "2026-10-10T09:00:00+03:00", "endAt": "2026-10-10T10:00:00+03:00" }
+  ]
+}
+```
+
+Onay sırasında görev hâlâ açık olmalı, blok süresi tahmini süreyle eşleşmeli ve sabit etkinliklerle, mevcut planlarla veya aynı onay grubundaki diğer bloklarla çakışmamalıdır. Her görev yalnızca bir kez planlanabilir. Herhangi bir blok geçersizse grubun tamamı reddedilir. `GET /api/planning/blocks` blokları listeler; isteğe bağlı `from` ve `to` aralığı kullanılabilir. `DELETE /api/planning/blocks/{id}` bir bloğu kaldırır.
+
 ## Henüz uygulanmayan özellikler
 
 - Focus mode arayüzü ve zamanlayıcı ekranı.
 - Kişisel günlük hedef ve hedef kutlaması.
 - Verimlilik analizi arayüzü ve grafikler.
-- Otomatik planlama.
+- Otomatik planlama ve plan bloklarının arayüzü.
 - Doğal dille görev oluşturma.
-- Takvimde görev dışı sabit etkinlikler.
+- Takvimde görev dışı sabit etkinliklerin arayüzü.
 
 Parola kasası ertelenmiştir ve mevcut kapsamda değildir.
 
