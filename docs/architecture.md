@@ -2,7 +2,7 @@
 
 ## Amaç ve kapsam
 
-Tek kullanıcılı, yerel çalışan bir üretkenlik uygulaması. Notlar, görevler, takvim, hatırlatıcılar, odaklanma oturumları, verimlilik analizi ve otomatik planlama içerir. Bu belge hedef mimariyi tarif eder; özellikler henüz uygulanmamıştır. Spring Boot başlangıç projesi backend klasörüne eklenmiştir.
+Tek kullanıcılı, yerel çalışan bir üretkenlik uygulaması. Notlar, görevler, takvim, hatırlatıcılar, odaklanma oturumları, verimlilik analizi ve otomatik planlama içerir. Bu belge hedef mimariyi tarif eder; görev API’si uygulanmıştır, diğer özellikler henüz uygulanmamıştır. Spring Boot başlangıç projesi backend klasörüne eklenmiştir.
 
 ## Çalışma düzeni
 
@@ -54,6 +54,7 @@ Bir görevin birden fazla notu, hatırlatıcısı, odaklanma oturumu ve planlana
 | GET | /api/tasks | Görevleri listele |
 | GET | /api/tasks/{id} | Tek görev getir |
 | PUT | /api/tasks/{id} | Görevi güncelle; tamamlanma durumunu da değiştirebilir |
+| PATCH | /api/tasks/{id}/status | Görevi tamamla veya yeniden aç |
 | DELETE | /api/tasks/{id} | Görevi sil |
 
 Başlık boş olamaz, tahmini süre pozitif olmalıdır. Geçersiz girdiler 400, bulunamayan kayıtlar 404 döndürür. Görev tamamlandığında completedAt kaydedilir; yeniden açıldığında temizlenir.

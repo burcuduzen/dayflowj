@@ -4,7 +4,7 @@ Gönderilen Spring Initializr projesi bu klasöre yerleştirildi. Java 17, Sprin
 
 Uygulama sınıfı `com.burcuduzen.dayflow.DayflowApplication`, proje adı `dayflowj` olarak düzenlendi. Yapılandırma `src/main/resources/application.properties` içindedir. Backend localhost üzerinde çalışır; H2 dosya tabanlıdır.
 
-Çalıştırma komutları [ana README](../README.md#backendi-çalıştırma) içindedir. Özellikler henüz uygulanmadı.
+Çalıştırma komutları [ana README](../README.md#backendi-çalıştırma) içindedir. Görev API’si uygulandı; diğer modüller henüz uygulanmadı.
 
 ## Paket düzeni
 
@@ -22,4 +22,6 @@ Uygulama sınıfı `com.burcuduzen.dayflow.DayflowApplication`, proje adı `dayf
 
 Kaynak dosyaları `src/main/resources/`, backend testleri `src/test/java/com/burcuduzen/dayflow/` altında bulunur.
 
-İlk tamamlanacak modül `task`: Task, TaskController, TaskService, TaskRepository ve DTO sınıfları. H2 dosya tabanlı yapılandırılacak; yerel veritabanı dosyaları Git'e eklenmeyecek.
+Uygulanan modül `task`: Task, TaskController, TaskService, TaskRepository ve DTO sınıfları. H2 dosya tabanlı yapılandırıldı; yerel veritabanı dosyaları Git'e eklenmeyecek.
+
+API örnekleri: [Görev API’si](../docs/task-api.md).
