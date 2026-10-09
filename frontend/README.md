@@ -23,3 +23,7 @@ Tarayıcıda http://127.0.0.1:8080 aç. Maven, frontend dosyalarını backend’
 Bugün ve Yaklaşanlar görünümleri açık görevleri son tarihlerine göre kullanıcının yerel saat diliminde filtreler. Görev formundaki yerel tarih API’ye ISO saat dilimli tarih olarak gönderilir. Tamamlanma oranı tüm görevler üzerinden hesaplanır. Görev içerikleri düz metin olarak gösterilir.
 
 Not defteri ve görev takvimi uygulandı. Görev dışı takvim etkinlikleri ve focus mode henüz uygulanmadı. Hatırlatma ve tekrarlama ayrıntıları [özellik durumu](../docs/features.md) belgesindedir.
+
+## Görsel tasarım
+
+Kullanıcının Pixel Planner HTML referansına göre krem kareli zemin, piksel başlıklar, kalın çerçeveler ve seçili gün ajandası kullanılır. Takvim ana görünüm olarak açılır. İstatistikler görev API’sindeki gerçek kayıtlardan hesaplanır; örnek seviye, seri veya focus verisi gösterilmez. Referanstaki Google Fonts isteğe bağlıdır; internet olmadığında monospace yedek font kullanılır. Tüm görev ve not kayıtları backend veritabanında tutulur.

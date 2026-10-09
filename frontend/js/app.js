@@ -1,12 +1,12 @@
 import { taskApi, noteApi, reminderApi } from './api.js';
 
 const $ = id => document.getElementById(id);
-const state = { tasks: [], view: 'PLAN', loading: true, loaded: false, editing: null, saving: false, busy: new Set() };
+const state = { tasks: [], view: 'CALENDAR', loading: true, loaded: false, editing: null, saving: false, busy: new Set() };
 const statusLabels = { TODO: 'Yapılacak', IN_PROGRESS: 'Devam ediyor', COMPLETED: 'Tamamlandı' };
 const priorityLabels = { HIGH: 'Yüksek öncelik', MEDIUM: 'Orta öncelik', LOW: 'Düşük öncelik' };
 const viewLabels = {
   PLAN: ['Bugünkü planım', 'Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.', 'Sıradaki işler'],
-  CALENDAR: ['Takvim', 'Görevlerini günlük, haftalık veya aylık gör.', 'Takvim'],
+  CALENDAR: ['Takvimin, görev haritan.', 'Bir gün seç, görevlerini gözden geçir ve sıradaki adımını ekle.', 'Takvim'],
   NOTES: ['Not defteri', 'Fikirlerini ve çalışma notlarını bir yerde tut.', 'Not defteri'],
   ALL: ['Tüm görevler', 'Açık ve tamamlanmış bütün görevlerin.', 'Görevlerin'],
   TODAY: ['Bugüne odaklan.', 'Bugün son tarihi gelen açık görevlerin.', 'Bugünkü görevler'],
@@ -14,6 +14,9 @@ const viewLabels = {
   COMPLETED: ['İlerlediğini gör.', 'Bitirdiğin işler, attığın adımlar.', 'Tamamlanan görevler']
 };
 let toastTimer;
+let calendarDate = new Date();
+let selectedDate = new Date();
+let agendaSaving = false;
 const dayKey = value => {
   const d = new Date(value);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -46,8 +49,17 @@ function render() {
   $('open-stat').textContent = open;
   $('today-stat').textContent = today;
   $('done-stat').textContent = done;
+  const todayTasks = tasks.filter(isToday);
+  const todayDone = todayTasks.filter(t => !isOpen(t)).length;
+  const high = tasks.filter(t => isOpen(t) && t.priority === 'HIGH').length;
+  $('daily-ratio').textContent = `${todayDone} / ${todayTasks.length}`;
+  $('priority-ratio').textContent = `${high} / ${open}`;
+  $('priority-tag').textContent = `${high} ÖNCELİKLİ`;
+  fillMeter('daily-meter', todayTasks.length ? todayDone / todayTasks.length : 0);
+  fillMeter('priority-meter', open ? high / open : 0);
   const percentage = tasks.length ? Math.round(done / tasks.length * 100) : 0;
   $('progress-stat').replaceChildren(document.createTextNode(String(percentage)), node('em', '', '%'));
+  fillMeter('completion-meter', percentage / 100);
   $('progress-bar').style.width = `${percentage}%`;
   $('remaining-label').textContent = `${open} açık görev`;
   const [title, description, listTitle] = viewLabels[state.view];
@@ -59,7 +71,8 @@ function render() {
   $('tasks-panel').hidden = notesView || calendarView;
   $('notes-panel').hidden = !notesView;
   $('calendar-panel').hidden = !calendarView;
-  document.querySelector('.metrics').hidden = notesView || calendarView;
+  $('calendar-workspace').hidden = !calendarView;
+  document.querySelector('.metrics').hidden = notesView;
   $('new-task').textContent = notesView ? '+ Yeni not' : '+ Yeni görev';
   if (calendarView) renderCalendar();
   if (notesView) renderNotes();
@@ -239,7 +252,6 @@ setInterval(() => { if (!state.loading) render(); }, 60000);
 loadTasks();
 
 const noteState = { notes: [], loading: false, loaded: false, editing: null, saving: false };
-let calendarDate = new Date();
 let reminders = [];
 let reminderPolling = false;
 let remindersBusy = new Set();
@@ -303,30 +315,75 @@ $('note-form').addEventListener('submit', saveNote);
 ['close-note','cancel-note'].forEach(id => $(id).onclick = () => { if (!noteState.saving) $('note-dialog').close(); });
 $('note-dialog').addEventListener('cancel', event => { if (noteState.saving) event.preventDefault(); });
 
+function fillMeter(id, ratio) {
+  const meter = $(id);
+  const percentage = Math.round(Math.min(1, Math.max(0, ratio)) * 100);
+  meter.setAttribute('aria-valuenow', String(percentage));
+  meter.replaceChildren(...Array.from({length:10}, (_,index) => node('i', index < Math.round(percentage/10) ? 'filled' : '')));
+}
 function renderCalendar() {
   const mode = $('calendar-mode').value;
   const start = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate());
   let count = 1;
-  if (mode === 'MONTH') { start.setDate(1); start.setDate(start.getDate() - (start.getDay() + 6) % 7); count = 42; }
+  if (mode === 'MONTH') { start.setDate(1); start.setDate(start.getDate() - (start.getDay() + 6) % 7); count = Math.ceil(((new Date(calendarDate.getFullYear(),calendarDate.getMonth(),1).getDay()+6)%7 + new Date(calendarDate.getFullYear(),calendarDate.getMonth()+1,0).getDate())/7)*7; }
   if (mode === 'WEEK') { start.setDate(start.getDate() - (start.getDay() + 6) % 7); count = 7; }
-  $('calendar-title').textContent = calendarDate.toLocaleDateString('tr-TR', mode === 'MONTH' ? {month:'long',year:'numeric'} : {day:'numeric',month:'long',year:'numeric'});
+  $('calendar-title').textContent = calendarDate.toLocaleDateString('tr-TR', mode === 'MONTH' ? {month:'long',year:'numeric'} : {day:'numeric',month:'long',year:'numeric'}).toLocaleUpperCase('tr');
   const grid = $('calendar-grid'); grid.className = `calendar-grid ${mode.toLowerCase()}`; grid.replaceChildren();
-  if (mode !== 'DAY') ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].forEach(day => grid.append(node('div','calendar-weekday',day)));
+  if (mode !== 'DAY') ['PZT','SAL','ÇAR','PER','CUM','CMT','PAZ'].forEach(day => grid.append(node('div','calendar-weekday',day)));
   for (let i = 0; i < count; i++) {
     const date = new Date(start); date.setDate(start.getDate() + i);
     const key = dayKey(date);
-    const cell = node('div', `calendar-cell${key === dayKey(new Date()) ? ' current-day' : ''}${mode === 'MONTH' && date.getMonth() !== calendarDate.getMonth() ? ' other-month' : ''}`);
-    const head = node('div','calendar-cell-head');head.append(node('span','',mode === 'DAY' ? date.toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'}) : String(date.getDate())));
-    const add = node('button','calendar-add','+');add.setAttribute('aria-label',`${key}: görev ekle`);add.onclick = () => openForm(null,date);head.append(add);cell.append(head);
+    const cell = node('div', `calendar-cell${key === dayKey(new Date()) ? ' current-day' : ''}${key === dayKey(selectedDate) ? ' selected' : ''}${mode === 'MONTH' && date.getMonth() !== calendarDate.getMonth() ? ' other-month' : ''}`);
+    const head = node('div','calendar-cell-head');
+    const select = node('button','day-number',mode === 'DAY' ? date.toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'}) : String(date.getDate()));
+    select.setAttribute('aria-label',date.toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+    select.setAttribute('aria-pressed',String(key === dayKey(selectedDate)));
+    select.onclick = () => { selectedDate = new Date(date); renderCalendar(); };
+    head.append(select);
+    const add = node('button','calendar-add','+');add.setAttribute('aria-label',`${key}: görev ekle`);add.onclick = () => { selectedDate = new Date(date); openForm(null,date); };head.append(add);cell.append(head);
     const tasks = state.tasks.filter(t => t.dueDate && dayKey(t.dueDate) === key).sort((a,b) => new Date(a.dueDate)-new Date(b.dueDate));
-    tasks.forEach(task => {
+    if (mode === 'MONTH') {
+      const dots = node('div','dots');
+      tasks.slice(0,6).forEach(task => { const dot = node('i',`dot ${task.status === 'COMPLETED' ? 'completed' : task.priority}`);dot.title=task.title;dots.append(dot); });
+      if (tasks.length > 6) dots.append(node('span','more-dots',`+${tasks.length-6}`));
+      cell.append(dots);
+    } else tasks.forEach(task => {
       const button = node('button',`calendar-task ${task.priority}${task.status === 'COMPLETED' ? ' done' : ''}`, `${new Date(task.dueDate).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})} ${task.title}`);
-      button.title = task.title; button.onclick = () => openForm(task); cell.append(button);
+      button.onclick = () => openForm(task);cell.append(button);
     });
-    if (!tasks.length && mode === 'DAY') cell.append(node('p','loading','Bu gün için tarihli görev yok.'));
     grid.append(cell);
   }
+  renderAgenda();
 }
+function renderAgenda() {
+  $('selected-label').textContent = selectedDate.toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).toLocaleUpperCase('tr');
+  const tasks = state.tasks.filter(t => t.dueDate && dayKey(t.dueDate) === dayKey(selectedDate)).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
+  const list = $('agenda-list');list.replaceChildren();
+  if (state.loading) { list.append(node('p','empty','Görevler yükleniyor…'));return; }
+  if (!state.loaded) { list.append(node('p','empty','Görevler yüklenemedi. Üstteki Yenile butonuyla tekrar deneyebilirsin.'));return; }
+  if (!tasks.length) list.append(node('p','empty','Bu gün için tarihli görev yok. Aşağıdan ilk görevini ekle.'));
+  tasks.forEach(task => {
+    const event = node('article',`event${task.status === 'COMPLETED' ? ' done' : ''}`);
+    event.append(node('i',`stripe ${task.priority}`),node('span','event-time',new Date(task.dueDate).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})));
+    const content = node('div','event-content');const title=node('button','event-name',task.title);title.onclick=()=>openForm(task);
+    content.append(title,node('p','event-type',statusLabels[task.status]));
+    const check=node('button','task-check'+(task.status === 'COMPLETED' ? ' completed' : ''),task.status === 'COMPLETED'?'✓':'');
+    check.setAttribute('aria-label',`${task.title}: ${task.status === 'COMPLETED'?'yeniden aç':'tamamla'}`);check.disabled=state.busy.has(task.id);check.onclick=()=>changeStatus(task);
+    event.append(content,check);list.append(event);
+  });
+}
+$('agenda-form').addEventListener('submit', async event => {
+  event.preventDefault();if(agendaSaving || !state.loaded)return;
+  const title=$('agenda-title').value.trim();if(!title){$('agenda-title').setCustomValidity('Görev başlığı boş olamaz.');$('agenda-title').reportValidity();return;}
+  const dueDate=new Date(`${dayKey(selectedDate)}T${$('agenda-time').value}`);
+  agendaSaving=true;$('agenda-form').querySelectorAll('input,select,button').forEach(el=>el.disabled=true);$('agenda-error').hidden=true;
+  try {
+    await taskApi.create({title,dueDate:dueDate.toISOString(),priority:$('agenda-priority').value,recurrence:'NONE',reminderEnabled:true,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone});
+    $('agenda-title').value='';notify('Görev ajandaya eklendi.');await loadTasks();await pollReminders();
+  } catch(error){$('agenda-error').textContent=error.message;$('agenda-error').hidden=false;}
+  finally{agendaSaving=false;$('agenda-form').querySelectorAll('input,select,button').forEach(el=>el.disabled=false);}
+});
+$('agenda-title').addEventListener('input',()=>$('agenda-title').setCustomValidity(''));
 function moveCalendar(direction) {
   const mode = $('calendar-mode').value;
   if (mode === 'MONTH') { calendarDate.setDate(1); calendarDate.setMonth(calendarDate.getMonth() + direction); }
@@ -335,7 +392,7 @@ function moveCalendar(direction) {
 }
 $('calendar-prev').onclick = () => moveCalendar(-1);
 $('calendar-next').onclick = () => moveCalendar(1);
-$('calendar-today').onclick = () => { calendarDate = new Date(); renderCalendar(); };
+$('calendar-today').onclick = () => { calendarDate = new Date(); selectedDate = new Date(); renderCalendar(); };
 $('calendar-mode').onchange = renderCalendar;
 
 function updateNotificationButton() {
