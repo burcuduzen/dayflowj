@@ -1,11 +1,14 @@
-import { taskApi } from './api.js';
+import { taskApi, noteApi, reminderApi } from './api.js';
 
 const $ = id => document.getElementById(id);
-const state = { tasks: [], view: 'ALL', loading: true, loaded: false, editing: null, saving: false, busy: new Set() };
+const state = { tasks: [], view: 'PLAN', loading: true, loaded: false, editing: null, saving: false, busy: new Set() };
 const statusLabels = { TODO: 'Yapılacak', IN_PROGRESS: 'Devam ediyor', COMPLETED: 'Tamamlandı' };
 const priorityLabels = { HIGH: 'Yüksek öncelik', MEDIUM: 'Orta öncelik', LOW: 'Düşük öncelik' };
 const viewLabels = {
-  ALL: ['Gününü hafiflet.', 'Yapacakların bir yerde. Kontrol sende.', 'Görevlerin'],
+  PLAN: ['Bugünkü planım', 'Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.', 'Sıradaki işler'],
+  CALENDAR: ['Takvim', 'Görevlerini günlük, haftalık veya aylık gör.', 'Takvim'],
+  NOTES: ['Not defteri', 'Fikirlerini ve çalışma notlarını bir yerde tut.', 'Not defteri'],
+  ALL: ['Tüm görevler', 'Açık ve tamamlanmış bütün görevlerin.', 'Görevlerin'],
   TODAY: ['Bugüne odaklan.', 'Bugün son tarihi gelen açık görevlerin.', 'Bugünkü görevler'],
   UPCOMING: ['Önünü daha net gör.', 'Bugünden sonraki açık görevlerin.', 'Yaklaşan görevler'],
   COMPLETED: ['İlerlediğini gör.', 'Bitirdiğin işler, attığın adımlar.', 'Tamamlanan görevler']
@@ -51,6 +54,15 @@ function render() {
   $('view-title').textContent = title;
   $('view-description').textContent = description;
   $('list-title').textContent = listTitle;
+  const notesView = state.view === 'NOTES';
+  const calendarView = state.view === 'CALENDAR';
+  $('tasks-panel').hidden = notesView || calendarView;
+  $('notes-panel').hidden = !notesView;
+  $('calendar-panel').hidden = !calendarView;
+  document.querySelector('.metrics').hidden = notesView || calendarView;
+  $('new-task').textContent = notesView ? '+ Yeni not' : '+ Yeni görev';
+  if (calendarView) renderCalendar();
+  if (notesView) renderNotes();
   $('task-list').setAttribute('aria-busy', String(state.loading));
   $('refresh').disabled = state.loading || state.saving || state.busy.size > 0;
   $('new-task').disabled = state.loading || !state.loaded || state.saving;
@@ -64,6 +76,7 @@ function render() {
   const status = $('status-filter').value;
   const priority = $('priority-filter').value;
   const visible = tasks.filter(task => {
+    if (state.view === 'PLAN' && (!isOpen(task) || task.dueDate && dayKey(task.dueDate) > dayKey(new Date()))) return false;
     if (state.view === 'TODAY' && !(isOpen(task) && isToday(task))) return false;
     if (state.view === 'UPCOMING' && !(isOpen(task) && isUpcoming(task))) return false;
     if (state.view === 'COMPLETED' && isOpen(task)) return false;
@@ -74,7 +87,7 @@ function render() {
   $('visible-count').textContent = `${visible.length} görev`;
   const empty = state.loaded && visible.length === 0;
   $('empty-state').hidden = !empty;
-  const firstTask = tasks.length === 0 && state.view === 'ALL' && !query && !status && !priority;
+  const firstTask = tasks.length === 0 && ['ALL', 'PLAN'].includes(state.view) && !query && !status && !priority;
   $('empty-title').textContent = firstTask ? 'Yeni bir başlangıca yer var.' : 'Bu görünümde görev yok.';
   $('empty-description').textContent = firstTask ? 'İlk görevini ekle, gününü adım adım planla.' : 'Başka bir görünüm seçebilir veya filtreleri değiştirebilirsin.';
   $('empty-add').hidden = !firstTask;
@@ -99,6 +112,7 @@ function renderTask(task) {
     const label = date.toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     meta.append(node('span', overdue ? 'overdue' : '', `${overdue ? 'Gecikmiş · ' : ''}${label}`));
   }
+  if (task.recurrence && task.recurrence !== 'NONE') meta.append(node('span', '', {DAILY:'Her gün',WEEKLY:'Her hafta',MONTHLY:'Her ay'}[task.recurrence]));
   if (task.estimatedMinutes) meta.append(node('span', '', `${task.estimatedMinutes} dk`));
   main.append(meta);
   const actions = node('div', 'task-actions');
@@ -123,14 +137,17 @@ function toLocalInput(value) {
   const date = new Date(value);
   return `${dayKey(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
-function openForm(task = null) {
+function openForm(task = null, defaultDate = null) {
   if (state.saving) return;
   state.editing = task;
   $('task-form').reset(); $('title').setCustomValidity(''); $('form-error').hidden = true;
   $('dialog-title').textContent = task ? 'Görevi düzenle' : 'Yeni görev';
   $('save-task').textContent = task ? 'Değişiklikleri kaydet' : 'Görevi ekle';
   $('status-field').hidden = !task;
+  if (defaultDate) $('dueDate').value = `${dayKey(defaultDate)}T18:00`;
   if (task) {
+    $('recurrence').value = task.recurrence || 'NONE';
+    $('reminderEnabled').checked = Boolean(task.reminderEnabled);
     $('title').value = task.title;
     $('description').value = task.description || '';
     $('dueDate').value = toLocalInput(task.dueDate);
@@ -152,7 +169,12 @@ async function saveTask(event) {
   const title = $('title').value.trim();
   if (!title) { $('title').setCustomValidity('Görev başlığı boş olamaz.'); $('title').reportValidity(); return; }
   $('form-error').hidden = true;
+  if ($('recurrence').value !== 'NONE' && !$('dueDate').value) {
+    $('form-error').textContent = 'Tekrarlayan görev için bir son tarih seç.'; $('form-error').hidden = false; return;
+  }
   const data = {
+    recurrence: $('recurrence').value, reminderEnabled: $('reminderEnabled').checked,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul',
     title, description: $('description').value.trim() || null,
     dueDate: $('dueDate').value ? new Date($('dueDate').value).toISOString() : null,
     priority: $('priority').value,
@@ -161,14 +183,18 @@ async function saveTask(event) {
   const editing = state.editing;
   if (editing) data.status = $('status').value;
   setSaving(true);
+  let savedSuccessfully = false;
   try {
     const saved = editing ? await taskApi.update(editing.id, data) : await taskApi.create(data);
     state.tasks = editing ? state.tasks.map(task => task.id === saved.id ? saved : task) : [saved, ...state.tasks];
+    savedSuccessfully = true;
     $('task-dialog').close();
     notify(editing ? 'Görev güncellendi.' : 'Yeni görevin eklendi.');
     if (!state.loaded) { state.loaded = true; }
   } catch (error) { $('form-error').textContent = error.message; $('form-error').hidden = false; }
   finally { setSaving(false); }
+  if (savedSuccessfully) await loadTasks();
+  await pollReminders();
 }
 async function changeStatus(task) {
   if (state.busy.has(task.id)) return;
@@ -179,6 +205,7 @@ async function changeStatus(task) {
     notify(updated.status === 'COMPLETED' ? 'Bir adım daha tamamlandı.' : 'Görev yeniden açıldı.');
   } catch (error) { notify(error.message, true); }
   finally { state.busy.delete(task.id); render(); }
+  await loadTasks(); await pollReminders();
 }
 async function removeTask(task) {
   if (state.busy.has(task.id) || !window.confirm(`“${task.title}” görevini silmek istiyor musun?`)) return;
@@ -186,9 +213,10 @@ async function removeTask(task) {
   try { await taskApi.remove(task.id); state.tasks = state.tasks.filter(t => t.id !== task.id); notify('Görev silindi.'); }
   catch (error) { notify(error.message, true); }
   finally { state.busy.delete(task.id); render(); }
+  await pollReminders();
 }
 $('date-label').textContent = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-$('new-task').addEventListener('click', () => openForm());
+$('new-task').addEventListener('click', () => state.view === 'NOTES' ? openNote() : openForm());
 $('empty-add').addEventListener('click', () => openForm());
 $('refresh').addEventListener('click', loadTasks);
 $('task-form').addEventListener('submit', saveTask);
@@ -204,7 +232,165 @@ document.querySelectorAll('[data-view]').forEach(button => button.addEventListen
     item.classList.toggle('active', active);
     if (active) item.setAttribute('aria-current', 'page'); else item.removeAttribute('aria-current');
   });
+  if (state.view === 'NOTES') loadNotes();
   render();
 }));
 setInterval(() => { if (!state.loading) render(); }, 60000);
 loadTasks();
+
+const noteState = { notes: [], loading: false, loaded: false, editing: null, saving: false };
+let calendarDate = new Date();
+let reminders = [];
+let reminderPolling = false;
+let remindersBusy = new Set();
+const notified = new Set();
+try { JSON.parse(sessionStorage.getItem('dayflow-notified') || '[]').forEach(key => notified.add(key)); } catch { /* storage is optional */ }
+
+async function loadNotes() {
+  if (noteState.loading || noteState.saving) return;
+  noteState.loading = true; $('note-error').hidden = true; renderNotes();
+  try { noteState.notes = await noteApi.list(); noteState.loaded = true; }
+  catch (error) { $('note-error').textContent = error.message; $('note-error').hidden = false; }
+  finally { noteState.loading = false; renderNotes(); }
+}
+function renderNotes() {
+  const query = $('note-search').value.trim().toLocaleLowerCase('tr');
+  const visible = noteState.notes.filter(n => `${n.title} ${n.content}`.toLocaleLowerCase('tr').includes(query));
+  $('note-count').textContent = `${visible.length} not`;
+  if (noteState.loading) { $('note-list').replaceChildren(node('p', 'loading', 'Notlar yükleniyor…')); return; }
+  $('note-list').replaceChildren(...visible.map(note => {
+    const card = node('article', 'note-card');
+    const heading = node('div', 'note-card-heading');
+    heading.append(node('h3', '', note.title));
+    const edit = node('button', 'icon-button', '✎'); edit.setAttribute('aria-label', `${note.title}: notu düzenle`); edit.onclick = () => openNote(note);
+    const remove = node('button', 'icon-button danger', '×'); remove.setAttribute('aria-label', `${note.title}: notu sil`); remove.onclick = () => deleteNote(note);
+    heading.append(edit, remove); card.append(heading, node('p', 'note-preview', note.content || 'İçerik henüz boş.'), node('small', '', new Date(note.updatedAt).toLocaleString('tr-TR')));
+    return card;
+  }));
+  if (!visible.length && noteState.loaded) $('note-list').append(node('p', 'loading', query ? 'Aramanla eşleşen not yok.' : 'Yeni not butonuyla ilk notunu ekle.'));
+}
+function openNote(note = null) {
+  if (noteState.saving) return;
+  noteState.editing = note; $('note-form').reset(); $('note-title').setCustomValidity('');
+  $('note-form-error').hidden = true;
+  $('note-dialog-title').textContent = note ? 'Notu düzenle' : 'Yeni not';
+  $('note-title').value = note?.title || ''; $('note-content').value = note?.content || '';
+  $('note-dialog').showModal(); $('note-title').focus();
+}
+async function saveNote(event) {
+  event.preventDefault(); if (noteState.saving) return;
+  const title = $('note-title').value.trim();
+  if (!title) { $('note-title').setCustomValidity('Başlık boş olamaz.'); $('note-title').reportValidity(); return; }
+  noteState.saving = true;
+  $('note-form').querySelectorAll('button,input,textarea').forEach(el => { el.disabled = true; });
+  $('note-form-error').hidden = true;
+  const body = { title, content: $('note-content').value };
+  try {
+    const saved = noteState.editing ? await noteApi.update(noteState.editing.id, body) : await noteApi.create(body);
+    noteState.notes = [saved, ...noteState.notes.filter(n => n.id !== saved.id)]; noteState.loaded = true;
+    $('note-dialog').close(); notify('Not kaydedildi.'); renderNotes();
+  } catch (error) { $('note-form-error').textContent = error.message; $('note-form-error').hidden = false; }
+  finally { noteState.saving = false; $('note-form').querySelectorAll('button,input,textarea').forEach(el => { el.disabled = false; }); }
+}
+async function deleteNote(note) {
+  if (!confirm(`“${note.title}” notunu silmek istiyor musun?`)) return;
+  try { await noteApi.remove(note.id); noteState.notes = noteState.notes.filter(n => n.id !== note.id); renderNotes(); notify('Not silindi.'); }
+  catch (error) { notify(error.message, true); }
+}
+$('note-search').addEventListener('input', renderNotes);
+$('note-title').addEventListener('input', () => $('note-title').setCustomValidity(''));
+$('note-form').addEventListener('submit', saveNote);
+['close-note','cancel-note'].forEach(id => $(id).onclick = () => { if (!noteState.saving) $('note-dialog').close(); });
+$('note-dialog').addEventListener('cancel', event => { if (noteState.saving) event.preventDefault(); });
+
+function renderCalendar() {
+  const mode = $('calendar-mode').value;
+  const start = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate());
+  let count = 1;
+  if (mode === 'MONTH') { start.setDate(1); start.setDate(start.getDate() - (start.getDay() + 6) % 7); count = 42; }
+  if (mode === 'WEEK') { start.setDate(start.getDate() - (start.getDay() + 6) % 7); count = 7; }
+  $('calendar-title').textContent = calendarDate.toLocaleDateString('tr-TR', mode === 'MONTH' ? {month:'long',year:'numeric'} : {day:'numeric',month:'long',year:'numeric'});
+  const grid = $('calendar-grid'); grid.className = `calendar-grid ${mode.toLowerCase()}`; grid.replaceChildren();
+  if (mode !== 'DAY') ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].forEach(day => grid.append(node('div','calendar-weekday',day)));
+  for (let i = 0; i < count; i++) {
+    const date = new Date(start); date.setDate(start.getDate() + i);
+    const key = dayKey(date);
+    const cell = node('div', `calendar-cell${key === dayKey(new Date()) ? ' current-day' : ''}${mode === 'MONTH' && date.getMonth() !== calendarDate.getMonth() ? ' other-month' : ''}`);
+    const head = node('div','calendar-cell-head');head.append(node('span','',mode === 'DAY' ? date.toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'}) : String(date.getDate())));
+    const add = node('button','calendar-add','+');add.setAttribute('aria-label',`${key}: görev ekle`);add.onclick = () => openForm(null,date);head.append(add);cell.append(head);
+    const tasks = state.tasks.filter(t => t.dueDate && dayKey(t.dueDate) === key).sort((a,b) => new Date(a.dueDate)-new Date(b.dueDate));
+    tasks.forEach(task => {
+      const button = node('button',`calendar-task ${task.priority}${task.status === 'COMPLETED' ? ' done' : ''}`, `${new Date(task.dueDate).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})} ${task.title}`);
+      button.title = task.title; button.onclick = () => openForm(task); cell.append(button);
+    });
+    if (!tasks.length && mode === 'DAY') cell.append(node('p','loading','Bu gün için tarihli görev yok.'));
+    grid.append(cell);
+  }
+}
+function moveCalendar(direction) {
+  const mode = $('calendar-mode').value;
+  if (mode === 'MONTH') { calendarDate.setDate(1); calendarDate.setMonth(calendarDate.getMonth() + direction); }
+  else calendarDate.setDate(calendarDate.getDate() + direction * (mode === 'WEEK' ? 7 : 1));
+  renderCalendar();
+}
+$('calendar-prev').onclick = () => moveCalendar(-1);
+$('calendar-next').onclick = () => moveCalendar(1);
+$('calendar-today').onclick = () => { calendarDate = new Date(); renderCalendar(); };
+$('calendar-mode').onchange = renderCalendar;
+
+function updateNotificationButton() {
+  const button = $('enable-notifications');
+  if (!('Notification' in window)) { button.textContent = 'Uygulama içi hatırlatma'; button.disabled = true; }
+  else if (Notification.permission === 'granted') { button.textContent = 'Bildirimler açık'; button.disabled = true; }
+  else if (Notification.permission === 'denied') { button.textContent = 'Bildirim izni kapalı'; button.disabled = false; }
+}
+$('enable-notifications').onclick = async () => {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'denied') { notify('Tarayıcının site ayarlarından bildirim iznini açabilirsin.', true); return; }
+  await Notification.requestPermission(); updateNotificationButton();
+};
+async function pollReminders() {
+  if (reminderPolling) return;
+  reminderPolling = true;
+  try {
+    reminders = await reminderApi.list(); $('reminder-state').textContent = ''; renderReminders();
+    for (const reminder of reminders) {
+      const key = `${reminder.taskId}:${reminder.remindAt}`;
+      if ('Notification' in window && Notification.permission === 'granted' && !notified.has(key)) {
+        try {
+          const notification = new Notification('DayFlowJ · Görev zamanı', {body:reminder.title, tag:key});
+          notification.onclick = () => { window.focus(); notification.close(); };
+          notified.add(key);
+          try { sessionStorage.setItem('dayflow-notified',JSON.stringify([...notified].slice(-200))); } catch {}
+        } catch { /* The in-app reminder remains available on unsupported browsers. */ }
+      }
+    }
+  } catch { if (reminders.length) $('reminder-state').textContent = 'Bağlantı yok; tekrar denenecek.'; }
+  finally { reminderPolling = false; }
+}
+function renderReminders() {
+  $('reminders-panel').hidden = reminders.length === 0;
+  $('reminder-list').replaceChildren(...reminders.map(reminder => {
+    const row = node('div','reminder-row');row.append(node('strong','',reminder.title));
+    const actions = node('div','reminder-actions');
+    for (const minutes of [5,10,30]) {
+      const button = node('button','secondary',`${minutes} dk ertele`);button.disabled=remindersBusy.has(reminder.taskId);
+      button.onclick=()=>handleReminder(reminder.taskId,minutes);actions.append(button);
+    }
+    const dismiss = node('button','text-button','Kapat');dismiss.disabled=remindersBusy.has(reminder.taskId);dismiss.onclick=()=>handleReminder(reminder.taskId);actions.append(dismiss);row.append(actions);return row;
+  }));
+}
+async function handleReminder(id, minutes = null) {
+  if (remindersBusy.has(id)) return;
+  remindersBusy.add(id);renderReminders();
+  try {
+    if (minutes) await reminderApi.snooze(id,minutes); else await reminderApi.dismiss(id);
+    reminders=reminders.filter(r=>r.taskId!==id);renderReminders();
+    notify(minutes ? `Hatırlatıcı ${minutes} dakika ertelendi.` : 'Hatırlatıcı kapatıldı.');
+  } catch(error) { notify(error.message,true); }
+  finally { remindersBusy.delete(id);renderReminders(); }
+}
+updateNotificationButton();
+pollReminders();
+setInterval(pollReminders,15000);
+window.addEventListener('focus', () => { pollReminders(); });

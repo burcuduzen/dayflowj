@@ -2,7 +2,7 @@
 
 ## Amaç ve kapsam
 
-Tek kullanıcılı, yerel çalışan bir üretkenlik uygulaması. Notlar, görevler, takvim, hatırlatıcılar, odaklanma oturumları, verimlilik analizi ve otomatik planlama içerir. Bu belge hedef mimariyi tarif eder; görev API’si ve görev arayüzü uygulanmıştır, diğer özellikler henüz uygulanmamıştır. Spring Boot başlangıç projesi backend klasörüne eklenmiştir.
+Tek kullanıcılı, yerel çalışan bir üretkenlik uygulaması. Notlar, görevler, takvim, hatırlatıcılar, odaklanma oturumları, verimlilik analizi ve otomatik planlama içerir. Bu belge hedef mimariyi tarif eder; görev API’si ve görev arayüzü uygulanmıştır, not defteri, görev takvimi, hatırlatıcı ve tekrarlama da uygulanmıştır. Diğer özellikler [özellik durumu](features.md) belgesinde listelenir. Spring Boot başlangıç projesi backend klasörüne eklenmiştir.
 
 ## Çalışma düzeni
 
@@ -69,7 +69,7 @@ Başlık boş olamaz, tahmini süre pozitif olmalıdır. Geçersiz girdiler 400,
 
 ## Yerel çalışma sınırları
 
-Backend çalışmıyorsa hatırlatma zamanlayıcısı işlemez. Tarayıcı bildirimleri için frontend'in açık olması ve bildirim izni gerekir. Uygulama yeniden açıldığında kaçırılan hatırlatmaları ele alma politikası uygulanmalıdır. Focus sayacı yalnızca ekran sayacına güvenmez; başlangıç zamanı kaydedilir ve mola süreleri ayrı tutulur.
+Backend ve frontend açıkken zamanı gelen hatırlatmalar frontend tarafından periyodik olarak sorgulanır. Backend çalışmıyorsa bu sorgu işlemez. Tarayıcı bildirimleri için frontend'in açık olması ve bildirim izni gerekir. Uygulama yeniden açıldığında kaçırılan hatırlatmaları ele alma politikası uygulanmalıdır. Focus sayacı yalnızca ekran sayacına güvenmez; başlangıç zamanı kaydedilir ve mola süreleri ayrı tutulur.
 
 ## Uygulama aşamaları
 

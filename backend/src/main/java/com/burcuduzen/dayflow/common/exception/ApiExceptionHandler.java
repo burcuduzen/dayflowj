@@ -11,6 +11,12 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ProblemDetail> statusError(org.springframework.web.server.ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode()).body(ProblemDetail.forStatusAndDetail(
+            ex.getStatusCode(), ex.getReason() == null ? "İstek tamamlanamadı." : ex.getReason()));
+    }
+
     @ExceptionHandler(TaskNotFoundException.class)
     public ResponseEntity<ProblemDetail> notFound(TaskNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -19,7 +25,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> invalidFields(MethodArgumentNotValidException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Görev bilgilerini kontrol edin.");
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Girdiğiniz bilgileri kontrol edin.");
         Map<String, String> errors = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(e -> errors.putIfAbsent(e.getField(), e.getDefaultMessage()));
         problem.setProperty("errors", errors);

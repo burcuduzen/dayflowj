@@ -25,7 +25,7 @@ class TaskServiceTests {
     @Test
     void completionIsIdempotentAndReopeningClearsCompletionDate() {
         Task task = new Task("Görev", null, null, TaskPriority.HIGH, 30);
-        when(repository.findById(1L)).thenReturn(Optional.of(task));
+        when(repository.findForUpdate(1L)).thenReturn(Optional.of(task));
         when(repository.save(task)).thenReturn(task);
         TaskResponse completed = service.updateStatus(1L, TaskStatus.COMPLETED);
         assertNotNull(completed.completedAt());

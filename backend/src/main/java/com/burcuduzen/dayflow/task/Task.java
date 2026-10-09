@@ -2,6 +2,8 @@ package com.burcuduzen.dayflow.task;
 
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.Objects;
 
 @Entity
 @Table(name = "tasks")
@@ -23,6 +25,15 @@ public class Task {
     @Column(nullable = false)
     private OffsetDateTime updatedAt;
     private OffsetDateTime completedAt;
+
+    @Enumerated(EnumType.STRING)
+    private Recurrence recurrence;
+    private String timeZone;
+    private OffsetDateTime reminderAt;
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean reminderEnabled;
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean recurrenceSpawned;
 
     protected Task() {}
 
@@ -57,6 +68,34 @@ public class Task {
         this.status = status;
         this.updatedAt = OffsetDateTime.now();
     }
+
+    public void configureSchedule(Recurrence recurrence, String timeZone, boolean reminderEnabled) {
+        Recurrence next = recurrence == null ? Recurrence.NONE : recurrence;
+        String zone = timeZone == null || timeZone.isBlank() ? "Europe/Istanbul" : timeZone;
+        ZoneId.of(zone);
+        boolean changed = this.reminderEnabled != reminderEnabled;
+        this.recurrence = next;
+        this.timeZone = zone;
+        this.reminderEnabled = reminderEnabled;
+        if (isComplete() || !reminderEnabled) this.reminderAt = null;
+        else if (changed) this.reminderAt = this.dueDate;
+    }
+
+    public void resetReminderForNewDate(OffsetDateTime previousDate) {
+        if (!Objects.equals(previousDate, this.dueDate)) {
+            this.reminderAt = reminderEnabled && !isComplete() ? this.dueDate : null;
+        }
+    }
+    public void restartReminder() { this.reminderAt = reminderEnabled && !isComplete() ? dueDate : null; }
+    public void dismissReminder() { this.reminderAt = null; }
+    public void snoozeReminder(int minutes) { this.reminderAt = OffsetDateTime.now().plusMinutes(minutes); }
+    public boolean isComplete() { return status == TaskStatus.COMPLETED; }
+    public Recurrence getRecurrence() { return recurrence == null ? Recurrence.NONE : recurrence; }
+    public String getTimeZone() { return timeZone == null ? "Europe/Istanbul" : timeZone; }
+    public OffsetDateTime getReminderAt() { return reminderAt; }
+    public boolean isReminderEnabled() { return reminderEnabled; }
+    public boolean isRecurrenceSpawned() { return recurrenceSpawned; }
+    public void markRecurrenceSpawned() { recurrenceSpawned = true; }
 
     public Long getId() { return id; }
     public String getTitle() { return title; }

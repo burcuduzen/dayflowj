@@ -57,3 +57,11 @@ Geçersiz alanlar, tarih biçimi veya enum değerleri 400; bulunamayan görevler
 Görev oluşturduktan sonra backend’i Ctrl+C ile durdur, aynı backend klasöründen yeniden başlat ve listele. Dosya tabanlı H2 sayesinde görev kalır. Testler ayrı bellek veritabanı kullanır ve kişisel görev verilerini değiştirmez.
 
 Tarayıcıda `/api/tasks` açıldığında JSON görünür. Kullanıcı arayüzü için http://127.0.0.1:8080 adresini aç.
+
+## Tekrarlama ve hatırlatma
+
+Görev oluşturma ve düzenleme isteklerinde `recurrence`: NONE, DAILY, WEEKLY veya MONTHLY; `reminderEnabled`: true/false ve `timeZone`: örneğin Europe/Istanbul alanları kullanılabilir. Tekrarlama için dueDate zorunludur. Yeni görevde recurrence varsayılan NONE, reminderEnabled varsayılan true’dur.
+
+`GET /api/reminders` zamanı gelmiş açık görev hatırlatmalarını getirir. `POST /api/reminders/{taskId}/snooze` gövdesi `{"minutes":5}` (5,10,30); `POST /api/reminders/{taskId}/dismiss` hatırlatmayı kapatır.
+
+Not API’si: GET/POST `/api/notes`, PUT/DELETE `/api/notes/{id}`. Oluşturma/düzenleme gövdesi `{"title":"Not başlığı","content":"İçerik"}`.

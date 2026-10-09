@@ -4,7 +4,7 @@ Gönderilen Spring Initializr projesi bu klasöre yerleştirildi. Java 17, Sprin
 
 Uygulama sınıfı `com.burcuduzen.dayflow.DayflowApplication`, proje adı `dayflowj` olarak düzenlendi. Yapılandırma `src/main/resources/application.properties` içindedir. Backend localhost üzerinde çalışır; H2 dosya tabanlıdır.
 
-Çalıştırma komutları [ana README](../README.md#backendi-çalıştırma) içindedir. Görev API’si uygulandı; diğer modüller henüz uygulanmadı.
+Çalıştırma komutları [ana README](../README.md#backendi-çalıştırma) içindedir. Görev, not ve hatırlatıcı API’leri uygulandı. Diğer modüller henüz uygulanmadı.
 
 ## Paket düzeni
 

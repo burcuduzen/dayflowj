@@ -4,7 +4,7 @@ A local productivity app with notes, calendar, smart reminders, focus sessions, 
 
 ## Proje durumu
 
-Bu repo Spring Boot başlangıç projesini, özellik klasörlerini ve mimari planını içerir. Görev CRUD API’si ve durum güncelleme endpoint’i uygulandı. Görev yönetimi arayüzü de uygulandı.
+Bu repo Spring Boot başlangıç projesini, özellik klasörlerini ve mimari planını içerir. Görev CRUD API’si ve durum güncelleme endpoint’i uygulandı. Görev arayüzü, not defteri, günlük/haftalık/aylık görev takvimi, tekrarlama, uygulama içi hatırlatma, izinli masaüstü bildirimi ve erteleme uygulandı.
 
 ## Hedef teknoloji yapısı
 
@@ -58,3 +58,5 @@ Backend `http://127.0.0.1:8080` adresinde çalışır. Arayüz için `http://127
 Testleri çalıştırmak için backend klasöründe `./mvnw test` (Windows: `.\mvnw.cmd test`) kullan.
 
 Görev API’si kullanım örnekleri: [Görev API’si](docs/task-api.md).
+
+Güncel kapsam ve bildirim sınırları: [Özellik durumu](docs/features.md). Focus mode, günlük hedefler, doğal dil, otomatik planlama ve verimlilik analizi henüz uygulanmadı.
