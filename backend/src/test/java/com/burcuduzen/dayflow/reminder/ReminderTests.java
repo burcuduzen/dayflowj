@@ -8,6 +8,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ReminderTests {
+    @Test void earlyReminderIsCalculatedFromDueDate() {
+        OffsetDateTime due = OffsetDateTime.parse("2026-10-12T15:00:00+03:00");
+        Task task = new Task("Görev", null, due, TaskPriority.MEDIUM, null);
+        task.configureSchedule(Recurrence.NONE, "Europe/Istanbul", true, 60);
+        assertEquals(due.minusHours(1), task.getReminderAt());
+        assertEquals(60, task.getReminderMinutesBefore());
+    }
+
     @Test void snoozePersistsNewTimeAndRejectsInvalidDurations() {
         TaskRepository repository = mock(TaskRepository.class);
         Task task = new Task("Görev", null, OffsetDateTime.now().minusMinutes(1), TaskPriority.MEDIUM, null);

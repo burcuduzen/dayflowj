@@ -13,10 +13,16 @@ public record CreateTaskRequest(
     @Positive Integer estimatedMinutes,
     Recurrence recurrence,
     Boolean reminderEnabled,
-    @Size(max = 100) String timeZone
+    @Size(max = 100) String timeZone,
+    @Min(0) @Max(10080) Integer reminderMinutesBefore
 ) {
     public CreateTaskRequest(String title, String description, OffsetDateTime dueDate,
         TaskPriority priority, Integer estimatedMinutes) {
-        this(title, description, dueDate, priority, estimatedMinutes, Recurrence.NONE, true, "Europe/Istanbul");
+        this(title, description, dueDate, priority, estimatedMinutes, Recurrence.NONE, true, "Europe/Istanbul", 0);
+    }
+    public CreateTaskRequest(String title, String description, OffsetDateTime dueDate,
+        TaskPriority priority, Integer estimatedMinutes, Recurrence recurrence,
+        Boolean reminderEnabled, String timeZone) {
+        this(title, description, dueDate, priority, estimatedMinutes, recurrence, reminderEnabled, timeZone, 0);
     }
 }

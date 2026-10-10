@@ -18,10 +18,11 @@ public class TaskService {
     }
 
     public TaskResponse create(CreateTaskRequest request) {
-        validateSchedule(request.dueDate(), request.recurrence(), request.timeZone());
+        validateSchedule(request.dueDate(), request.recurrence(), request.timeZone(), request.reminderMinutesBefore());
         Task task = new Task(request.title().strip(), request.description(), request.dueDate(),
             request.priority() == null ? TaskPriority.MEDIUM : request.priority(), request.estimatedMinutes());
-        task.configureSchedule(request.recurrence(), request.timeZone(), !Boolean.FALSE.equals(request.reminderEnabled()));
+        task.configureSchedule(request.recurrence(), request.timeZone(), !Boolean.FALSE.equals(request.reminderEnabled()),
+            request.reminderMinutesBefore());
         return TaskResponse.from(repository.save(task));
     }
 
@@ -36,13 +37,14 @@ public class TaskService {
     public TaskResponse get(Long id) { return TaskResponse.from(find(id)); }
 
     public TaskResponse update(Long id, UpdateTaskRequest request) {
-        validateSchedule(request.dueDate(), request.recurrence(), request.timeZone());
+        validateSchedule(request.dueDate(), request.recurrence(), request.timeZone(), request.reminderMinutesBefore());
         Task task = findForUpdate(id);
         boolean wasComplete = task.isComplete();
         OffsetDateTime previousDate = task.getDueDate();
         task.update(request.title().strip(), request.description(), request.dueDate(),
             request.priority(), request.estimatedMinutes(), request.status());
-        task.configureSchedule(request.recurrence(), request.timeZone(), !Boolean.FALSE.equals(request.reminderEnabled()));
+        task.configureSchedule(request.recurrence(), request.timeZone(), !Boolean.FALSE.equals(request.reminderEnabled()),
+            request.reminderMinutesBefore());
         task.resetReminderForNewDate(previousDate);
         afterStatusChange(task, wasComplete);
         return TaskResponse.from(repository.save(task));
@@ -58,9 +60,13 @@ public class TaskService {
 
     public void delete(Long id) { repository.delete(find(id)); }
 
-    private void validateSchedule(OffsetDateTime dueDate, Recurrence recurrence, String timeZone) {
+    private void validateSchedule(OffsetDateTime dueDate, Recurrence recurrence, String timeZone,
+                                  Integer reminderMinutesBefore) {
         if (recurrence != null && recurrence != Recurrence.NONE && dueDate == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tekrarlayan görev için son tarih gerekli.");
+        }
+        if (reminderMinutesBefore != null && (reminderMinutesBefore < 0 || reminderMinutesBefore > 10080)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Erken hatırlatma 0 ile 10080 dakika arasında olmalıdır.");
         }
         try { ZoneId.of(timeZone == null || timeZone.isBlank() ? "Europe/Istanbul" : timeZone); }
         catch (DateTimeException ex) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Saat dilimi geçersiz."); }
@@ -75,7 +81,8 @@ public class TaskService {
         if (wasComplete || task.isRecurrenceSpawned() || task.getRecurrence() == Recurrence.NONE || task.getDueDate() == null) return;
         OffsetDateTime next = ScheduleCalculator.next(task.getDueDate(), task.getRecurrence(), task.getTimeZone(), Instant.now());
         Task upcoming = new Task(task.getTitle(), task.getDescription(), next, task.getPriority(), task.getEstimatedMinutes());
-        upcoming.configureSchedule(task.getRecurrence(), task.getTimeZone(), task.isReminderEnabled());
+        upcoming.configureSchedule(task.getRecurrence(), task.getTimeZone(), task.isReminderEnabled(),
+            task.getReminderMinutesBefore());
         repository.save(upcoming);
         task.markRecurrenceSpawned();
     }

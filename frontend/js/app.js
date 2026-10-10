@@ -1,13 +1,17 @@
-import { taskApi, noteApi, reminderApi, progressApi, emailApi, authApi } from './api.js';
+import { taskApi, noteApi, reminderApi, progressApi, emailApi, authApi, naturalTaskApi, settingsApi, focusApi, analyticsApi, planningApi, calendarEventApi } from './api.js';
 
 const $ = id => document.getElementById(id);
 const state = { tasks: [], view: 'CALENDAR', loading: true, loaded: false, editing: null, saving: false, busy: new Set() };
+const eventState = { events: [], loaded: false, loading: false, editing: null, saving: false };
 const statusLabels = { TODO: 'Yapılacak', IN_PROGRESS: 'Devam ediyor', COMPLETED: 'Tamamlandı' };
 const priorityLabels = { HIGH: 'Yüksek öncelik', MEDIUM: 'Orta öncelik', LOW: 'Düşük öncelik' };
 const viewLabels = {
   PLAN: ['Bugünkü planım', 'Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.', 'Sıradaki işler'],
   CALENDAR: ['Takvimin, görev haritan.', 'Bir gün seç, görevlerini gözden geçir ve sıradaki adımını ekle.', 'Takvim'],
   NOTES: ['Not defteri', 'Fikirlerini ve çalışma notlarını bir yerde tut.', 'Not defteri'],
+  FOCUS: ['Dikkatini koru.', 'Tek bir işe odaklan, molalarını ve gerçek çalışma süreni kaydet.', 'Focus'],
+  ANALYTICS: ['İlerlemeni görünür kıl.', 'Tamamladığın görevleri ve gerçek odak süreni son yedi günde incele.', 'Analiz'],
+  PLANNING: ['Haftanı otomatik planla.', 'Açık görevlerini çalışma saatlerindeki uygun boşluklara yerleştir.', 'Otomatik plan'],
   ALL: ['Tüm görevler', 'Açık ve tamamlanmış bütün görevlerin.', 'Görevlerin'],
   TODAY: ['Bugüne odaklan.', 'Bugün son tarihi gelen açık görevlerin.', 'Bugünkü görevler'],
   UPCOMING: ['Önünü daha net gör.', 'Bugünden sonraki açık görevlerin.', 'Yaklaşan görevler'],
@@ -72,13 +76,20 @@ function render() {
   $('list-title').textContent = listTitle;
   const notesView = state.view === 'NOTES';
   const calendarView = state.view === 'CALENDAR';
-  $('tasks-panel').hidden = notesView || calendarView;
+  const focusView = state.view === 'FOCUS';
+  const analyticsView = state.view === 'ANALYTICS';
+  const planningView = state.view === 'PLANNING';
+  $('tasks-panel').hidden = notesView || calendarView || focusView || analyticsView || planningView;
   $('notes-panel').hidden = !notesView;
+  $('focus-panel').hidden = !focusView;
+  $('analytics-panel').hidden = !analyticsView;
+  $('planning-panel').hidden = !planningView;
   $('calendar-panel').hidden = !calendarView;
   $('calendar-workspace').hidden = !calendarView;
-  document.querySelector('.metrics').hidden = notesView;
+  $('new-event').hidden = !calendarView;
+  document.querySelector('.metrics').hidden = notesView || focusView || analyticsView || planningView;
   $('new-task').textContent = notesView ? '+ Yeni not' : '+ Yeni görev';
-  if (calendarView) renderCalendar();
+  if (calendarView) { renderCalendar(); if (!eventState.loaded) loadCalendarEvents(); }
   if (notesView) renderNotes();
   $('task-list').setAttribute('aria-busy', String(state.loading));
   $('refresh').disabled = state.loading || state.saving || state.busy.size > 0;
@@ -166,6 +177,7 @@ function openForm(task = null, defaultDate = null) {
   if (task) {
     $('recurrence').value = task.recurrence || 'NONE';
     $('reminderEnabled').checked = Boolean(task.reminderEnabled);
+    $('reminderMinutesBefore').value = String(task.reminderMinutesBefore || 0);
     $('title').value = task.title;
     $('description').value = task.description || '';
     $('dueDate').value = toLocalInput(task.dueDate);
@@ -192,6 +204,7 @@ async function saveTask(event) {
   }
   const data = {
     recurrence: $('recurrence').value, reminderEnabled: $('reminderEnabled').checked,
+    reminderMinutesBefore: Number($('reminderMinutesBefore').value),
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul',
     title, description: $('description').value.trim() || null,
     dueDate: $('dueDate').value ? new Date($('dueDate').value).toISOString() : null,
@@ -251,6 +264,9 @@ document.querySelectorAll('[data-view]').forEach(button => button.addEventListen
     if (active) item.setAttribute('aria-current', 'page'); else item.removeAttribute('aria-current');
   });
   if (state.view === 'NOTES') loadNotes();
+  if (state.view === 'FOCUS') loadFocus();
+  if (state.view === 'ANALYTICS') loadAnalytics();
+  if (state.view === 'PLANNING') initializePlanning();
   render();
 }));
 setInterval(() => { if (accountReady && !state.loading) render(); }, 60000);
@@ -327,6 +343,12 @@ function fillMeter(id, ratio) {
   meter.setAttribute('aria-valuenow', String(percentage));
   meter.replaceChildren(...Array.from({length:10}, (_,index) => node('i', index < Math.round(percentage/10) ? 'filled' : '')));
 }
+function eventsOnDay(date) {
+  const start = new Date(date.getFullYear(),date.getMonth(),date.getDate());
+  const end = new Date(start); end.setDate(end.getDate()+1);
+  return eventState.events.filter(event => new Date(event.startAt) < end && new Date(event.endAt) > start)
+    .sort((a,b)=>new Date(a.startAt)-new Date(b.startAt));
+}
 function renderCalendar() {
   const mode = $('calendar-mode').value;
   const start = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate());
@@ -348,15 +370,20 @@ function renderCalendar() {
     head.append(select);
     const add = node('button','calendar-add','+');add.setAttribute('aria-label',`${key}: görev ekle`);add.onclick = () => { selectedDate = new Date(date); openForm(null,date); };head.append(add);cell.append(head);
     const tasks = state.tasks.filter(t => t.dueDate && dayKey(t.dueDate) === key).sort((a,b) => new Date(a.dueDate)-new Date(b.dueDate));
+    const fixedEvents = eventsOnDay(date);
     if (mode === 'MONTH') {
       const dots = node('div','dots');
       tasks.slice(0,6).forEach(task => { const dot = node('i',`dot ${task.status === 'COMPLETED' ? 'completed' : task.priority}`);dot.title=task.title;dots.append(dot); });
-      if (tasks.length > 6) dots.append(node('span','more-dots',`+${tasks.length-6}`));
+      fixedEvents.slice(0,3).forEach(event => { const dot=node('i','dot event-dot');dot.title=event.title;dots.append(dot); });
+      if (tasks.length + fixedEvents.length > 9) dots.append(node('span','more-dots',`+${tasks.length+fixedEvents.length-9}`));
       cell.append(dots);
-    } else tasks.forEach(task => {
+    } else {
+      fixedEvents.forEach(event => { const button=node('button','calendar-task calendar-event',`${new Date(event.startAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})} ${event.title}`);button.onclick=()=>openCalendarEvent(event);cell.append(button); });
+      tasks.forEach(task => {
       const button = node('button',`calendar-task ${task.priority}${task.status === 'COMPLETED' ? ' done' : ''}`, `${new Date(task.dueDate).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})} ${task.title}`);
       button.onclick = () => openForm(task);cell.append(button);
-    });
+      });
+    }
     grid.append(cell);
   }
   renderAgenda();
@@ -364,10 +391,15 @@ function renderCalendar() {
 function renderAgenda() {
   $('selected-label').textContent = selectedDate.toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).toLocaleUpperCase('tr');
   const tasks = state.tasks.filter(t => t.dueDate && dayKey(t.dueDate) === dayKey(selectedDate)).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
+  const fixedEvents = eventsOnDay(selectedDate);
   const list = $('agenda-list');list.replaceChildren();
   if (state.loading) { list.append(node('p','empty','Görevler yükleniyor…'));return; }
   if (!state.loaded) { list.append(node('p','empty','Görevler yüklenemedi. Üstteki Yenile butonuyla tekrar deneyebilirsin.'));return; }
-  if (!tasks.length) list.append(node('p','empty','Bu gün için tarihli görev yok. Aşağıdan ilk görevini ekle.'));
+  if (!tasks.length && !fixedEvents.length) list.append(node('p','empty','Bu gün için görev veya etkinlik yok.'));
+  fixedEvents.forEach(item => {
+    const event=node('article','event fixed-event');event.append(node('i','stripe event-stripe'),node('span','event-time',new Date(item.startAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})));
+    const content=node('div','event-content');const title=node('button','event-name',item.title);title.onclick=()=>openCalendarEvent(item);content.append(title,node('p','event-type','Sabit etkinlik'));event.append(content);list.append(event);
+  });
   tasks.forEach(task => {
     const event = node('article',`event${task.status === 'COMPLETED' ? ' done' : ''}`);
     event.append(node('i',`stripe ${task.priority}`),node('span','event-time',new Date(task.dueDate).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})));
@@ -400,6 +432,37 @@ $('calendar-prev').onclick = () => moveCalendar(-1);
 $('calendar-next').onclick = () => moveCalendar(1);
 $('calendar-today').onclick = () => { calendarDate = new Date(); selectedDate = new Date(); renderCalendar(); };
 $('calendar-mode').onchange = renderCalendar;
+
+async function loadCalendarEvents() {
+  if (!accountReady || eventState.loading) return;
+  eventState.loading=true;
+  try { eventState.events=await calendarEventApi.list();eventState.loaded=true;renderCalendar(); }
+  catch(error){notify(error.message,true);}
+  finally{eventState.loading=false;}
+}
+function openCalendarEvent(event=null) {
+  if(eventState.saving)return;
+  eventState.editing=event;$('event-form').reset();$('event-error').hidden=true;
+  $('event-dialog-title').textContent=event?'Etkinliği düzenle':'Yeni etkinlik';$('delete-event').hidden=!event;
+  if(event){$('event-title').value=event.title;$('event-description').value=event.description||'';$('event-start').value=toLocalInput(event.startAt);$('event-end').value=toLocalInput(event.endAt);}
+  else {const start=new Date(selectedDate);start.setHours(10,0,0,0);const end=new Date(start);end.setHours(11);$('event-start').value=toLocalInput(start);$('event-end').value=toLocalInput(end);}
+  $('event-dialog').showModal();$('event-title').focus();
+}
+function setEventBusy(busy){eventState.saving=busy;$('event-form').querySelectorAll('input,textarea,button').forEach(element=>element.disabled=busy);}
+$('new-event').onclick=()=>openCalendarEvent();
+['close-event','cancel-event'].forEach(id=>$(id).onclick=()=>{if(!eventState.saving)$('event-dialog').close();});
+$('event-dialog').addEventListener('cancel',event=>{if(eventState.saving)event.preventDefault();});
+$('event-form').addEventListener('submit',async event=>{
+  event.preventDefault();if(eventState.saving)return;setEventBusy(true);$('event-error').hidden=true;
+  const data={title:$('event-title').value.trim(),description:$('event-description').value.trim()||null,startAt:new Date($('event-start').value).toISOString(),endAt:new Date($('event-end').value).toISOString()};
+  try{if(eventState.editing)await calendarEventApi.update(eventState.editing.id,data);else await calendarEventApi.create(data);$('event-dialog').close();notify(eventState.editing?'Etkinlik güncellendi.':'Etkinlik eklendi.');await loadCalendarEvents();}
+  catch(error){$('event-error').textContent=error.message;$('event-error').hidden=false;}
+  finally{setEventBusy(false);}
+});
+$('delete-event').onclick=async()=>{
+  const event=eventState.editing;if(!event||eventState.saving||!confirm(`“${event.title}” etkinliğini silmek istiyor musun?`))return;
+  setEventBusy(true);try{await calendarEventApi.remove(event.id);$('event-dialog').close();notify('Etkinlik silindi.');await loadCalendarEvents();}catch(error){$('event-error').textContent=error.message;$('event-error').hidden=false;}finally{setEventBusy(false);}
+};
 
 function updateNotificationButton() {
   const button = $('enable-notifications');
@@ -516,6 +579,193 @@ $('test-email').onclick=async()=>{
 loadProgress();
 setInterval(loadProgress,60000);
 window.addEventListener('focus',loadProgress);
+
+let quickBusy = false;
+let quickDraft = null;
+function quickPayload() {
+  return {text:$('quick-text').value.trim(),timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul'};
+}
+function setQuickBusy(busy) {
+  quickBusy = busy;
+  $('quick-form').querySelectorAll('input,button').forEach(element => element.disabled = busy);
+  $('quick-create').disabled = busy;
+}
+$('quick-form').addEventListener('submit', async event => {
+  event.preventDefault(); if (quickBusy) return;
+  $('quick-error').hidden = true; $('quick-result').hidden = true; quickDraft = null;
+  setQuickBusy(true);
+  try {
+    quickDraft = await naturalTaskApi.preview(quickPayload());
+    $('quick-result-title').textContent = quickDraft.title;
+    const details = [priorityLabels[quickDraft.priority]];
+    if (quickDraft.dueDate) details.push(new Date(quickDraft.dueDate).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}));
+    if (quickDraft.estimatedMinutes) details.push(`${quickDraft.estimatedMinutes} dk`);
+    if (quickDraft.recurrence !== 'NONE') details.push({DAILY:'Her gün',WEEKLY:'Her hafta',MONTHLY:'Her ay'}[quickDraft.recurrence]);
+    $('quick-result-meta').textContent = details.join(' · '); $('quick-result').hidden = false;
+  } catch(error) { $('quick-error').textContent = error.message; $('quick-error').hidden = false; }
+  finally { setQuickBusy(false); }
+});
+$('quick-create').onclick = async () => {
+  if (quickBusy || !quickDraft) return;
+  setQuickBusy(true); $('quick-error').hidden = true;
+  try {
+    await naturalTaskApi.create(quickPayload());
+    $('quick-text').value = ''; $('quick-result').hidden = true; quickDraft = null;
+    notify('Görev doğal dilden oluşturuldu.'); await loadTasks(); await pollReminders();
+  } catch(error) { $('quick-error').textContent = error.message; $('quick-error').hidden = false; }
+  finally { setQuickBusy(false); }
+};
+
+let settingsBusy = false;
+function setSettingsBusy(busy) {
+  settingsBusy = busy;
+  $('settings-form').querySelectorAll('input,button').forEach(element => element.disabled = busy);
+}
+async function openSettings() {
+  $('settings-dialog').showModal(); $('settings-error').hidden = true; setSettingsBusy(true);
+  try {
+    const value = await settingsApi.get();
+    $('settings-goal').value = value.dailyTaskGoal; $('settings-zone').value = value.timeZone;
+    $('settings-start').value = value.workStart.slice(0,5); $('settings-end').value = value.workEnd.slice(0,5);
+    $('settings-focus').value = value.focusMinutes; $('settings-break').value = value.breakMinutes;
+  } catch(error) { $('settings-error').textContent = error.message; $('settings-error').hidden = false; }
+  finally { setSettingsBusy(false); }
+}
+$('open-settings').onclick = openSettings;
+['close-settings','cancel-settings'].forEach(id => $(id).onclick = () => { if (!settingsBusy) $('settings-dialog').close(); });
+$('settings-dialog').addEventListener('cancel', event => { if (settingsBusy) event.preventDefault(); });
+$('settings-form').addEventListener('submit', async event => {
+  event.preventDefault(); if (settingsBusy) return;
+  setSettingsBusy(true); $('settings-error').hidden = true;
+  const data = {dailyTaskGoal:Number($('settings-goal').value),timeZone:$('settings-zone').value.trim(),
+    workStart:$('settings-start').value,workEnd:$('settings-end').value,
+    focusMinutes:Number($('settings-focus').value),breakMinutes:Number($('settings-break').value)};
+  try { await settingsApi.save(data); $('settings-dialog').close(); notify('Ayarların kaydedildi.'); await loadProgress(); }
+  catch(error) { $('settings-error').textContent = error.message; $('settings-error').hidden = false; }
+  finally { setSettingsBusy(false); }
+});
+
+let activeFocus = null;
+let focusLoadedAt = 0;
+let focusBusy = false;
+function focusSeconds() {
+  if (!activeFocus) return 0;
+  return activeFocus.focusedSeconds + (activeFocus.status === 'RUNNING' ? Math.max(0,Math.floor((Date.now()-focusLoadedAt)/1000)) : 0);
+}
+function renderFocus() {
+  const seconds = focusSeconds();
+  $('focus-time').textContent = `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+  $('focus-state').textContent = !activeFocus ? 'Hazır' : activeFocus.status === 'RUNNING' ? 'Odaklanıyor' : 'Duraklatıldı';
+  const task = activeFocus?.taskId ? state.tasks.find(item => item.id === activeFocus.taskId) : null;
+  $('focus-task-label').textContent = task?.title || (activeFocus ? 'Serbest odak oturumu' : 'Dikkatini tek bir işe ver.');
+  $('focus-start').hidden = Boolean(activeFocus); $('focus-task').disabled = focusBusy || Boolean(activeFocus);
+  $('focus-pause').hidden = !activeFocus; $('focus-complete').hidden = !activeFocus;
+  if (activeFocus) $('focus-pause').textContent = activeFocus.status === 'PAUSED' ? 'Devam et' : 'Duraklat';
+  ['focus-start','focus-pause','focus-complete'].forEach(id => $(id).disabled = focusBusy);
+}
+async function loadFocus() {
+  if (!accountReady || focusBusy) return;
+  $('focus-task').replaceChildren(new Option('Görev seçmeden başla',''), ...state.tasks.filter(isOpen).map(task => new Option(task.title,String(task.id))));
+  try { activeFocus = await focusApi.active(); focusLoadedAt = Date.now(); $('focus-error').hidden = true; }
+  catch(error) { $('focus-error').textContent = error.message; $('focus-error').hidden = false; }
+  renderFocus();
+}
+async function focusAction(action) {
+  if (focusBusy) return;
+  focusBusy = true; $('focus-error').hidden = true; renderFocus();
+  try {
+    if (action === 'start') activeFocus = await focusApi.start($('focus-task').value ? Number($('focus-task').value) : null);
+    else if (action === 'complete') { await focusApi.complete(activeFocus.id); activeFocus = null; notify('Focus oturumu tamamlandı.'); }
+    else activeFocus = activeFocus.status === 'PAUSED' ? await focusApi.resume(activeFocus.id) : await focusApi.pause(activeFocus.id);
+    focusLoadedAt = Date.now();
+  } catch(error) { $('focus-error').textContent = error.message; $('focus-error').hidden = false; }
+  finally { focusBusy = false; renderFocus(); }
+}
+$('focus-start').onclick = () => focusAction('start');
+$('focus-pause').onclick = () => focusAction('toggle');
+$('focus-complete').onclick = () => focusAction('complete');
+setInterval(() => { if (state.view === 'FOCUS') renderFocus(); },1000);
+
+let analyticsBusy = false;
+async function loadAnalytics() {
+  if (!accountReady || analyticsBusy) return;
+  analyticsBusy = true; $('analytics-refresh').disabled = true; $('analytics-error').hidden = true;
+  try {
+    const data = await analyticsApi.get(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul');
+    $('analytics-range').textContent = `${new Date(`${data.from}T12:00:00`).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})} – ${new Date(`${data.to}T12:00:00`).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}`;
+    $('analytics-completed').textContent = data.completedTasks; $('analytics-focused').textContent = data.focusedMinutes;
+    $('analytics-estimated').textContent = data.estimatedMinutes; $('analytics-variance').textContent = data.varianceMinutes > 0 ? `+${data.varianceMinutes}` : data.varianceMinutes;
+    const max = Math.max(1,...data.days.map(day => day.focusedMinutes));
+    $('analytics-chart').replaceChildren(...data.days.map(day => {
+      const column = node('div','chart-day'); const bar = node('div','chart-bar');
+      bar.style.height = `${Math.max(3,day.focusedMinutes/max*170)}px`; bar.title = `${day.focusedMinutes} dakika odak`;
+      column.append(node('strong','',String(day.focusedMinutes)),bar,node('span','',new Date(`${day.date}T12:00:00`).toLocaleDateString('tr-TR',{weekday:'short'}))); return column;
+    }));
+  } catch(error) { $('analytics-error').textContent = error.message; $('analytics-error').hidden = false; }
+  finally { analyticsBusy = false; $('analytics-refresh').disabled = false; }
+}
+$('analytics-refresh').onclick = loadAnalytics;
+
+let planningBusy = false;
+let planningDraft = null;
+let planningInitialized = false;
+function setPlanningBusy(busy) {
+  planningBusy = busy;
+  $('planning-form').querySelectorAll('input,button').forEach(element => element.disabled = busy);
+  $('planning-approve').disabled = busy;
+}
+function renderPlanRows(result) {
+  const rows = result.blocks.map(block => {
+    const row = node('article','plan-row');
+    row.append(node('span','plan-time',`${new Date(block.startAt).toLocaleDateString('tr-TR',{weekday:'short',day:'numeric',month:'short'})} · ${new Date(block.startAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}`));
+    const main = node('div','plan-main'); main.append(node('strong','',block.title),node('span','',`${block.minutes} dakika · ${new Date(block.endAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})} bitiş`)); row.append(main); return row;
+  });
+  result.unscheduled.forEach(item => {
+    const row=node('article','plan-row unscheduled-row');row.append(node('span','plan-time','Yerleşmedi'));
+    const main=node('div','plan-main');main.append(node('strong','',item.title),node('span','',item.reason==='MISSING_ESTIMATE'?'Tahmini süre eklenmeli.':'Uygun boş zaman bulunamadı.'));row.append(main);rows.push(row);
+  });
+  $('planning-results').replaceChildren(...(rows.length ? rows : [node('p','loading','Planlanabilecek açık görev bulunamadı.')]));
+  $('planning-summary').textContent = `${result.blocks.length} blok önerildi · ${result.unscheduled.length} görev yerleşmedi`;
+  $('planning-approve').hidden = result.blocks.length === 0;
+}
+async function loadPlannedBlocks() {
+  try {
+    const blocks = await planningApi.blocks();
+    $('planning-existing').replaceChildren();
+    if (blocks.length) $('planning-existing').append(node('h3','planned-heading','Onaylanmış planlar'));
+    blocks.slice(0,12).forEach(block => {
+      const task = state.tasks.find(item => item.id === block.taskId);
+      const row=node('article','plan-row');row.append(node('span','plan-time',new Date(block.startAt).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})));
+      const main=node('div','plan-main');main.append(node('strong','',task?.title || `Görev #${block.taskId}`),node('span','',`${new Date(block.endAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})} bitiş`));
+      const remove=node('button','icon-button danger','×');remove.title='Planı kaldır';remove.onclick=async()=>{if(!confirm('Bu plan bloğunu kaldırmak istiyor musun?'))return;try{await planningApi.remove(block.id);notify('Plan bloğu kaldırıldı.');await loadPlannedBlocks();}catch(error){notify(error.message,true);}};
+      row.append(main,remove);$('planning-existing').append(row);
+    });
+  } catch(error) { $('planning-error').textContent=error.message;$('planning-error').hidden=false; }
+}
+async function initializePlanning() {
+  if (!planningInitialized) {
+    const today=dayKey(new Date());const end=new Date();end.setDate(end.getDate()+6);
+    $('planning-from').value=today;$('planning-to').value=dayKey(end);
+    try { const settings=await settingsApi.get();$('planning-start').value=settings.workStart.slice(0,5);$('planning-end').value=settings.workEnd.slice(0,5); }
+    catch { $('planning-start').value='09:00';$('planning-end').value='18:00'; }
+    planningInitialized=true;
+  }
+  loadPlannedBlocks();
+}
+$('planning-form').addEventListener('submit',async event=>{
+  event.preventDefault();if(planningBusy)return;setPlanningBusy(true);$('planning-error').hidden=true;$('planning-approve').hidden=true;
+  try {
+    planningDraft=await planningApi.suggest({from:$('planning-from').value,to:$('planning-to').value,workStart:$('planning-start').value,workEnd:$('planning-end').value,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Istanbul'});
+    renderPlanRows(planningDraft);
+  }catch(error){$('planning-error').textContent=error.message;$('planning-error').hidden=false;}
+  finally{setPlanningBusy(false);}
+});
+$('planning-approve').onclick=async()=>{
+  if(planningBusy||!planningDraft?.blocks.length)return;setPlanningBusy(true);$('planning-error').hidden=true;
+  try{await planningApi.approve(planningDraft.blocks.map(block=>({taskId:block.taskId,startAt:block.startAt,endAt:block.endAt})));notify('Plan onaylandı.');planningDraft=null;$('planning-approve').hidden=true;$('planning-results').replaceChildren(node('p','loading','Plan kaydedildi. Yeni bir öneri oluşturabilirsin.'));await loadPlannedBlocks();}
+  catch(error){$('planning-error').textContent=error.message;$('planning-error').hidden=false;}
+  finally{setPlanningBusy(false);}
+};
 
 function renderAuth() {
   $('planner').hidden = !accountReady;

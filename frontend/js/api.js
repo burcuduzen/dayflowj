@@ -39,6 +39,35 @@ export const reminderApi = {
 };
 
 export const progressApi = { get: zone => request(`/api/progress?timeZone=${encodeURIComponent(zone)}`) };
+export const naturalTaskApi = {
+  preview: data => request('/api/tasks/natural-language/preview', {method:'POST',body:JSON.stringify(data)}),
+  create: data => request('/api/tasks/natural-language', {method:'POST',body:JSON.stringify(data)})
+};
+export const settingsApi = {
+  get: () => request('/api/settings'),
+  save: data => request('/api/settings', {method:'PUT',body:JSON.stringify(data)})
+};
+export const focusApi = {
+  list: () => request('/api/focus-sessions'),
+  active: () => request('/api/focus-sessions/active'),
+  start: taskId => request('/api/focus-sessions', {method:'POST',body:JSON.stringify(taskId ? {taskId} : {})}),
+  pause: id => request(`/api/focus-sessions/${id}/pause`, {method:'POST'}),
+  resume: id => request(`/api/focus-sessions/${id}/resume`, {method:'POST'}),
+  complete: id => request(`/api/focus-sessions/${id}/complete`, {method:'POST'})
+};
+export const analyticsApi = { get: zone => request(`/api/analytics?timeZone=${encodeURIComponent(zone)}`) };
+export const planningApi = {
+  suggest: data => request('/api/planning/suggestions', {method:'POST',body:JSON.stringify(data)}),
+  blocks: () => request('/api/planning/blocks'),
+  approve: blocks => request('/api/planning/blocks/approve', {method:'POST',body:JSON.stringify({blocks})}),
+  remove: id => request(`/api/planning/blocks/${id}`, {method:'DELETE'})
+};
+export const calendarEventApi = {
+  list: () => request('/api/calendar-events'),
+  create: data => request('/api/calendar-events', {method:'POST',body:JSON.stringify(data)}),
+  update: (id,data) => request(`/api/calendar-events/${id}`, {method:'PUT',body:JSON.stringify(data)}),
+  remove: id => request(`/api/calendar-events/${id}`, {method:'DELETE'})
+};
 export const emailApi = {
   get: () => request('/api/email/settings'),
   save: data => request('/api/email/settings', {method:'PUT',body:JSON.stringify(data)}),

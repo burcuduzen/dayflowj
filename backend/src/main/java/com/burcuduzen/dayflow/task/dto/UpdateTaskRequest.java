@@ -14,10 +14,16 @@ public record UpdateTaskRequest(
     @NotNull TaskStatus status,
     Recurrence recurrence,
     Boolean reminderEnabled,
-    @Size(max = 100) String timeZone
+    @Size(max = 100) String timeZone,
+    @Min(0) @Max(10080) Integer reminderMinutesBefore
 ) {
     public UpdateTaskRequest(String title, String description, OffsetDateTime dueDate,
         TaskPriority priority, Integer estimatedMinutes, TaskStatus status) {
-        this(title, description, dueDate, priority, estimatedMinutes, status, Recurrence.NONE, true, "Europe/Istanbul");
+        this(title, description, dueDate, priority, estimatedMinutes, status, Recurrence.NONE, true, "Europe/Istanbul", 0);
+    }
+    public UpdateTaskRequest(String title, String description, OffsetDateTime dueDate,
+        TaskPriority priority, Integer estimatedMinutes, TaskStatus status, Recurrence recurrence,
+        Boolean reminderEnabled, String timeZone) {
+        this(title, description, dueDate, priority, estimatedMinutes, status, recurrence, reminderEnabled, timeZone, 0);
     }
 }

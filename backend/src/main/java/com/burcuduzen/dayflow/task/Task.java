@@ -32,6 +32,8 @@ public class Task {
     private OffsetDateTime reminderAt;
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean reminderEnabled;
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int reminderMinutesBefore;
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean recurrenceSpawned;
 
@@ -70,23 +72,30 @@ public class Task {
     }
 
     public void configureSchedule(Recurrence recurrence, String timeZone, boolean reminderEnabled) {
+        configureSchedule(recurrence, timeZone, reminderEnabled, 0);
+    }
+
+    public void configureSchedule(Recurrence recurrence, String timeZone, boolean reminderEnabled,
+                                  Integer reminderMinutesBefore) {
         Recurrence next = recurrence == null ? Recurrence.NONE : recurrence;
         String zone = timeZone == null || timeZone.isBlank() ? "Europe/Istanbul" : timeZone;
         ZoneId.of(zone);
-        boolean changed = this.reminderEnabled != reminderEnabled;
+        int leadMinutes = reminderMinutesBefore == null ? 0 : reminderMinutesBefore;
+        boolean changed = this.reminderEnabled != reminderEnabled || this.reminderMinutesBefore != leadMinutes;
         this.recurrence = next;
         this.timeZone = zone;
         this.reminderEnabled = reminderEnabled;
+        this.reminderMinutesBefore = leadMinutes;
         if (isComplete() || !reminderEnabled) this.reminderAt = null;
-        else if (changed) this.reminderAt = this.dueDate;
+        else if (changed) this.reminderAt = calculateReminderAt();
     }
 
     public void resetReminderForNewDate(OffsetDateTime previousDate) {
         if (!Objects.equals(previousDate, this.dueDate)) {
-            this.reminderAt = reminderEnabled && !isComplete() ? this.dueDate : null;
+            this.reminderAt = reminderEnabled && !isComplete() ? calculateReminderAt() : null;
         }
     }
-    public void restartReminder() { this.reminderAt = reminderEnabled && !isComplete() ? dueDate : null; }
+    public void restartReminder() { this.reminderAt = reminderEnabled && !isComplete() ? calculateReminderAt() : null; }
     public void dismissReminder() { this.reminderAt = null; }
     public void snoozeReminder(int minutes) { this.reminderAt = OffsetDateTime.now().plusMinutes(minutes); }
     public boolean isComplete() { return status == TaskStatus.COMPLETED; }
@@ -94,6 +103,7 @@ public class Task {
     public String getTimeZone() { return timeZone == null ? "Europe/Istanbul" : timeZone; }
     public OffsetDateTime getReminderAt() { return reminderAt; }
     public boolean isReminderEnabled() { return reminderEnabled; }
+    public int getReminderMinutesBefore() { return reminderMinutesBefore; }
     public boolean isRecurrenceSpawned() { return recurrenceSpawned; }
     public void markRecurrenceSpawned() { recurrenceSpawned = true; }
 
@@ -107,4 +117,8 @@ public class Task {
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public OffsetDateTime getCompletedAt() { return completedAt; }
+
+    private OffsetDateTime calculateReminderAt() {
+        return dueDate == null ? null : dueDate.minusMinutes(reminderMinutesBefore);
+    }
 }
