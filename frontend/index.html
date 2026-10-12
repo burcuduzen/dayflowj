@@ -6,7 +6,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Press+Start+2P&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20261012-no-today-1"><script type="module" src="/js/app.js?v=20261012-no-today-1"></script>
+  <link rel="stylesheet" href="/css/styles.css?v=20261012-calendar-cards-1"><script type="module" src="/js/app.js?v=20261012-calendar-cards-1"></script>
 </head>
 <body>
 <div class="shell">
@@ -20,7 +20,7 @@
       <button class="nav-item" data-view="NOTES"><span>≡</span> Not defteri</button>
       <button class="nav-item" data-view="FOCUS"><span>◎</span> Focus</button><button class="nav-item" data-view="ANALYTICS"><span>⌁</span> Analiz</button>
       <button class="nav-item" data-view="PLANNING"><span>✦</span> Otomatik planla</button>
-    </nav>    <section class="page-heading"><div><p class="eyebrow">Gününü planla</p><h1 id="view-title" class="pixel">Takvimin, görev haritan</h1><p id="view-description">Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.</p></div><div class="heading-actions"><button class="secondary" id="refresh" aria-label="Görevleri yenile">↻ Yenile</button><button class="secondary" id="new-event" hidden><span aria-hidden="true">＋</span> Etkinlik</button><button class="primary" id="new-task"><span aria-hidden="true">＋</span> Yeni görev</button></div></section>
+    </nav>    <section class="page-heading"><div><p class="eyebrow">Gününü planla</p><h1 id="view-title" class="pixel">Takvimin, görev haritan</h1><p id="view-description">Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.</p></div><div class="heading-actions"><button class="secondary" id="refresh" aria-label="Görevleri yenile">↻ Yenile</button><button class="secondary" id="new-event" hidden><span aria-hidden="true">＋</span> Etkinlik</button><button class="primary" id="new-task" hidden><span aria-hidden="true">＋</span> Yeni görev</button></div></section>
     <section hidden class="quick-capture" aria-labelledby="quick-title"><div><span class="quick-icon">✦</span><div><h2 id="quick-title">Aklındakini yaz</h2><p>“Yarın saat 14:30 acil 45 dk sunumu hazırla” gibi.</p></div></div><form id="quick-form"><input id="quick-text" maxlength="500" required placeholder="Görevini doğal dille yaz…" aria-label="Doğal dille görev"><button class="secondary" type="submit">Önizle</button></form><div id="quick-result" class="quick-result" hidden><div><strong id="quick-result-title"></strong><span id="quick-result-meta"></span></div><button id="quick-create" class="primary" type="button">Görevi oluştur</button></div><p id="quick-error" class="form-error" hidden></p></section>
     <div id="load-error" class="error-banner" role="alert" hidden></div>
     <section id="reminders-panel" class="reminders-panel" aria-label="Zamanı gelen hatırlatmalar" hidden><div class="reminder-heading"><h2>Zamanı geldi</h2><span id="reminder-state" role="status"></span></div><div id="reminder-list"></div></section>
