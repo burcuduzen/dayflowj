@@ -73,3 +73,12 @@ export const emailApi = {
   save: data => request('/api/email/settings', {method:'PUT',body:JSON.stringify(data)}),
   test: () => request('/api/email/test', {method:'POST'})
 };
+
+export const gmailApi = {
+  status:()=>request('/api/gmail/status'), connect:()=>request('/api/gmail/connect',{method:'POST'}),
+  preferences:data=>request('/api/gmail/preferences',{method:'PUT',body:JSON.stringify(data)}),
+  sync:()=>request('/api/gmail/sync',{method:'POST'}), candidates:()=>request('/api/gmail/candidates'),
+  approve:(id,data)=>request(`/api/gmail/candidates/${id}/approve`,{method:'POST',body:JSON.stringify(data)}),
+  dismiss:id=>request(`/api/gmail/candidates/${id}/dismiss`,{method:'POST'}),
+  disconnect:()=>request('/api/gmail/connection',{method:'DELETE'})
+};

@@ -98,3 +98,5 @@
   text-decoration-color: currentColor;
   color: var(--muted);
 }
+
+.gmail-candidates{display:grid;gap:16px;margin:20px 0}.gmail-candidates .add-form input{width:100%;padding:10px;border:2px solid var(--ink);background:#f1dfac;color:var(--ink);border-radius:0}.gmail-candidates .note-card h3{line-height:1.8}#gmail-preferences{margin-top:20px}#gmail-dialog>.hint{font-size:11px;line-height:1.9}#gmail-status{border:2px solid var(--ink);padding:12px;background:#f6e8bf}
