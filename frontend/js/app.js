@@ -9,6 +9,7 @@ const viewLabels = {
   PLAN: ['Bugünkü planım', 'Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.', 'Sıradaki işler'],
   CALENDAR: ['Takvimin, görev haritan.', 'Bir gün seç, görevlerini gözden geçir ve sıradaki adımını ekle.', 'Takvim'],
   NOTES: ['Not defteri', 'Fikirlerini ve çalışma notlarını bir yerde tut.', 'Not defteri'],
+  FOCUS: ['Focus', '', ''],
   ANALYTICS: ['İlerlemeni görünür kıl.', 'Tamamladığın görevleri ve günlük ilerlemeni son yedi günde incele.', 'Analiz'],
   PLANNING: ['Haftanı otomatik planla.', 'Açık görevlerini çalışma saatlerindeki uygun boşluklara yerleştir.', 'Otomatik plan'],
   ALL: ['Tüm görevler', 'Açık ve tamamlanmış bütün görevlerin.', 'Görevlerin'],
@@ -69,18 +70,21 @@ function render() {
   $('view-title').textContent = title;
   $('view-description').textContent = description;
   $('list-title').textContent = listTitle;
+  const focusView = state.view === 'FOCUS';
+  $('stopwatch-panel').hidden = !focusView;
+  document.querySelector('.page-heading').hidden = focusView;
   const notesView = state.view === 'NOTES';
   const calendarView = state.view === 'CALENDAR';
   const analyticsView = state.view === 'ANALYTICS';
   const planningView = state.view === 'PLANNING';
-  $('tasks-panel').hidden = notesView || calendarView || analyticsView || planningView;
+  $('tasks-panel').hidden = notesView || calendarView || analyticsView || planningView || focusView;
   $('notes-panel').hidden = !notesView;
   $('analytics-panel').hidden = !analyticsView;
   $('planning-panel').hidden = !planningView;
   $('calendar-panel').hidden = !calendarView;
   $('calendar-workspace').hidden = !calendarView;
   $('new-event').hidden = !calendarView;
-  document.querySelector('.metrics').hidden = notesView || analyticsView || planningView;
+  document.querySelector('.metrics').hidden = notesView || analyticsView || planningView || focusView;
   $('new-task').textContent = notesView ? '+ Yeni not' : '+ Yeni görev';
   if (calendarView) { renderCalendar(); if (!eventState.loaded) loadCalendarEvents(); }
   if (notesView) renderNotes();
@@ -798,3 +802,50 @@ $('gmail-disconnect').onclick=()=>gmailAction(async()=>{await gmailApi.disconnec
 const gmailResult=new URLSearchParams(window.location.search).get('gmail');
 if(gmailResult){history.replaceState(null,'',window.location.pathname);$('gmail-dialog').showModal();gmailAction(async()=>{await renderGmail();if(gmailResult==='failed')throw new Error('Google bağlantısı tamamlanamadı; yeniden bağlan.');if(gmailResult==='cancelled')throw new Error('Google izni verilmedi.');});}
 
+// Wall-clock elapsed time remains accurate when the browser throttles background tabs.
+const stopwatchKey = 'dayflow-simple-stopwatch-v1';
+let stopwatch = { elapsed: 0, startedAt: null };
+try {
+  const saved = JSON.parse(localStorage.getItem(stopwatchKey));
+  if (saved && Number.isFinite(saved.elapsed) && saved.elapsed >= 0 &&
+      (saved.startedAt === null || (Number.isFinite(saved.startedAt) && saved.startedAt > 0))) stopwatch = saved;
+} catch { /* Storage may be unavailable; the stopwatch still works in this tab. */ }
+function stopwatchElapsed() {
+  return stopwatch.elapsed + (stopwatch.startedAt === null ? 0 : Math.max(0, Date.now() - stopwatch.startedAt));
+}
+function saveStopwatch() {
+  try { localStorage.setItem(stopwatchKey, JSON.stringify(stopwatch)); } catch {}
+}
+function renderStopwatch() {
+  const total = Math.floor(stopwatchElapsed() / 1000);
+  const hours = String(Math.floor(total / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor(total / 60) % 60).padStart(2, '0');
+  const seconds = String(total % 60).padStart(2, '0');
+  $('stopwatch-time').textContent = `${hours}:${minutes}:${seconds}`;
+  const running = stopwatch.startedAt !== null;
+  $('stopwatch-toggle').textContent = running ? 'Ⅱ Duraklat' : '▶ Başlat';
+  $('stopwatch-toggle').setAttribute('aria-label', running ? 'Kronometreyi duraklat' : 'Kronometreyi başlat');
+  $('stopwatch-toggle').setAttribute('aria-pressed', String(running));
+  $('stopwatch-panel').classList.toggle('running', running);
+}
+$('stopwatch-toggle').onclick = () => {
+  if (stopwatch.startedAt === null) stopwatch.startedAt = Date.now();
+  else { stopwatch.elapsed = stopwatchElapsed(); stopwatch.startedAt = null; }
+  saveStopwatch(); renderStopwatch();
+};
+$('stopwatch-reset').onclick = () => {
+  stopwatch = { elapsed: 0, startedAt: null }; saveStopwatch(); renderStopwatch();
+};
+window.addEventListener('storage', event => {
+  if(event.key !== stopwatchKey) return;
+  try {
+    const value = JSON.parse(event.newValue);
+    if(value && Number.isFinite(value.elapsed) && value.elapsed >= 0 &&
+       (value.startedAt === null || (Number.isFinite(value.startedAt) && value.startedAt > 0))) {
+      stopwatch = value; renderStopwatch();
+    }
+  } catch {}
+});
+setInterval(renderStopwatch, 250);
+document.addEventListener('visibilitychange', renderStopwatch);
+renderStopwatch();
