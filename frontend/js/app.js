@@ -83,7 +83,7 @@ function render() {
   $('calendar-panel').hidden = !calendarView;
   $('calendar-workspace').hidden = !calendarView;
   $('new-event').hidden = !calendarView;
-  document.querySelector('.metrics').hidden = notesView || analyticsView || planningView || focusView;
+  document.querySelector('.metrics').hidden = calendarView || notesView || analyticsView || planningView || focusView;
   $('new-task').textContent = notesView ? '+ Yeni not' : '+ Yeni görev';
   if (calendarView) { renderCalendar(); if (!eventState.loaded) loadCalendarEvents(); }
   if (notesView) renderNotes();
