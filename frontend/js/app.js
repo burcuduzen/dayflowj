@@ -11,7 +11,6 @@ const viewLabels = {
   FOCUS: ['Focus', '', ''],
   ANALYTICS: ['İlerlemeni görünür kıl.', 'Tamamladığın görevleri ve günlük ilerlemeni son yedi günde incele.', 'Analiz'],
   PLANNING: ['Haftanı otomatik planla.', 'Açık görevlerini çalışma saatlerindeki uygun boşluklara yerleştir.', 'Otomatik plan'],
-  ALL: ['Tüm görevler', 'Açık ve tamamlanmış bütün görevlerin.', 'Görevlerin'],
   UPCOMING: ['Önünü daha net gör.', 'Bugünden sonraki açık görevlerin.', 'Yaklaşan görevler'],
   COMPLETED: ['İlerlediğini gör.', 'Bitirdiğin işler, attığın adımlar.', 'Tamamlanan görevler']
 };
@@ -44,7 +43,7 @@ function render() {
   const open = tasks.filter(isOpen).length;
   const done = tasks.length - open;
   const today = tasks.filter(t => isOpen(t) && isToday(t)).length;
-  $('all-count').textContent = tasks.length;
+  
   
   $('upcoming-count').textContent = tasks.filter(t => isOpen(t) && isUpcoming(t)).length;
   $('completed-count').textContent = done;
