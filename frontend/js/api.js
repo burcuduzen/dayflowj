@@ -10,7 +10,6 @@ export async function request(path, options = {}) {
     throw new Error('Backend’e ulaşılamadı. Uygulamanın çalıştığını kontrol edip tekrar dene.');
   }
   if (!response.ok) {
-    if (response.status === 401 && !path.startsWith('/api/auth/')) window.dispatchEvent(new Event('dayflow-auth-required'));
     let problem;
     try { problem = await response.json(); } catch { /* response may not be JSON */ }
     const details = problem?.errors ? Object.values(problem.errors).join(' · ') : problem?.detail;
@@ -70,14 +69,7 @@ export const calendarEventApi = {
 };
 export const emailApi = {
   get: () => request('/api/email/settings'),
+  connect: recipient => request('/api/email/connect', {method:'POST',body:JSON.stringify({recipient})}),
   save: data => request('/api/email/settings', {method:'PUT',body:JSON.stringify(data)}),
   test: () => request('/api/email/test', {method:'POST'})
-};
-
-export const authApi = {
-  status: () => request('/api/auth/status'),
-  register: data => request('/api/auth/register', {method:'POST',body:JSON.stringify(data)}),
-  login: data => request('/api/auth/login', {method:'POST',body:JSON.stringify(data)}),
-  resend: data => request('/api/auth/resend', {method:'POST',body:JSON.stringify(data)}),
-  logout: () => request('/api/auth/logout', {method:'POST'})
 };

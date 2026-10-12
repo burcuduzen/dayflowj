@@ -1,6 +1,6 @@
 # DayFlowJ gönderici hesabı kurulumu
 
-Bu belge geliştirici içindir. Kullanıcı yalnızca maili ve DayFlowJ parolasıyla kayıt olur, doğrulama bağlantısını açar ve bildirim tercihini seçer. Kullanıcının Gmail parolası veya SMTP bilgileri istenmez. Maili DayFlowJ için ayrılmış bir gönderici hesabı gönderir.
+Bu belge geliştirici içindir. Uygulama kayıt veya giriş istemez. Kullanıcı isteğe bağlı olarak mailini yazar ve doğrulama bağlantısını açar. Kullanıcının Gmail parolası veya SMTP bilgisi istenmez. Maili DayFlowJ için ayrılmış bir gönderici hesabı gönderir.
 
 DayFlowJ, SMTP üzerinden e-posta gönderir. Gönderici hesabın SMTP erişimine izin vermelidir; bazı sağlayıcılar uygulama parolası, kurum izni veya OAuth gerektirir. Bu sürüm kullanıcı adı ve parola/uygulama parolası ile SMTP destekler; OAuth veya gelen kutusu okuma içermez.
 
@@ -31,20 +31,20 @@ Port 587 için STARTTLS (`DAYFLOW_MAIL_SSL=false`), sağlayıcı 465/implicit TL
 
 ## Kullanıcı akışı
 
-1. DayFlowJ açıldığında mail ve en az 12 karakterlik DayFlowJ parolasıyla kayıt ol. Görev hatırlatmalarını kayıt sırasında seç.
-2. Gelen doğrulama bağlantısını uygulamanın çalıştığı bilgisayarda aç. Bağlantı 1 saat geçerlidir ve tek kullanımlıktır.
-3. Doğrulamadan sonra mail ve DayFlowJ parolasıyla giriş yap. Görevlerini oluştur.
-4. E-posta ekranında tercihlerini aç/kapat veya test maili gönder. Alıcı adresi doğrulanmış hesabından gelir ve bu ekranda değiştirilmez.
+1. Uygulamayı aç ve görevlerini kullan. Kayıt, parola ve giriş gerekmez.
+2. İstersen üstteki Maille hatırlat butonuna bas, mail adresini gir ve Doğrulama maili gönder’e bas.
+3. Gelen bağlantıyı uygulamanın çalıştığı bilgisayarda aç. Bağlantı tek kullanımlıktır ve 1 saat geçerlidir. Doğrulama başarıyla tamamlanınca mail hatırlatmaları açılır.
+4. Maille hatırlat ekranında tercihini kapatabilir veya test maili gönderebilirsin. Adresi değiştirirsen yeni adrese doğrulama gider; mevcut doğrulanmış adres yeni doğrulama tamamlanana kadar korunur. Yeniden mail göndermek için en az 1 dakika beklenir.
 
-Gönderici kurulmamışsa kayıt kapalıdır ve ekranda kurulumun tamamlanmadığı belirtilir. Gerçek SMTP gönderimi olmadan doğrulama başarılı gösterilmez. Gönderici ayarlarının mevcut olması başarılı kimlik doğrulamasını kanıtlamaz; SMTP hata verirse kayıt geri alınır. Mail gönderiminin test edilmesi gerekir.
+Gönderici kurulmamışsa yalnızca mail gönderme seçeneği kullanılamaz. Görevler, notlar ve streak kullanımı devam eder. Gerçek SMTP gönderimi olmadan mail gönderildi veya doğrulandı gösterilmez. SMTP hata verirse doğrulama tercihi kaydedilmez. Gönderici ayarlarının mevcut olması başarılı kimlik doğrulamasını kanıtlamaz; gerçek mail gönderimini test et.
 
-## Yerel hesap ve oturum
+## Yerel çalışma ve doğrulama
 
-Bu sürüm her yerel kurulumda tek hesap destekler. Mevcut görevler, notlar ve streak geçmişi korunur ve bu yerel hesabın kullanımı için kalır. Çok kullanıcılı hizmet, kullanıcılar arasında veri ayrımı, parola sıfırlama ve mail adresi değiştirme henüz yoktur. Hesabı unuttuğunda veritabanını silme; veri kaybı olur.
+Bu kurulum tek yerel çalışma alanıdır; çok kullanıcılı bir hizmet değildir. Mevcut görevler, notlar ve streak geçmişi korunur. Önceki zorunlu hesap ekranı kaldırıldı; eski hesap tablosu verileri varsa kullanılmadan korunur. Önceden kayıtlı mail adreslerinin yeniden doğrulanması gerekir. Mail doğrulanmadan görev bildirimi gönderilmez.
 
-API erişimi doğrulanmış hesap ve oturum gerektirir. Parolalar PBKDF2-HMAC-SHA256 (600.000 yineleme ve rastgele salt) ile özetlenir. Doğrulama tokenının yalnızca SHA-256 özeti veritabanındadır. Oturum HttpOnly, SameSite=Lax çereziyle tutulur; girişte eski oturum yenilenir ve çıkışta silinir. Yazma istekleri aynı kaynak denetimi ve özel istek başlığı gerektirir. Giriş/kayıt/yeniden gönderim istekleri dakika başına sınırlanır. Yerel HTTP ve localhost ile sınırlıdır; internete açılacak bir çok kullanıcı sistemi için tasarlanmamıştır.
+Doğrulama tokenının yalnızca SHA-256 özeti veritabanındadır. Doğrulama adresi varsayılan olarak `http://127.0.0.1:8080` olur; başka yerel port kullanıyorsan geliştirici `DAYFLOW_PUBLIC_URL` değerini de değiştirmelidir. Bağlantıyı bu bilgisayarda aç; telefondaki localhost bu uygulamaya erişemez. Backend açıkken tarayıcı sekmesi kapalı olabilir.
 
-Doğrulama bağlantısının adresi varsayılan olarak `http://127.0.0.1:8080` olur. Farklı yerel port kullanıyorsan geliştirici `DAYFLOW_PUBLIC_URL` değerini de değiştirmelidir. Bağlantı telefonda uygulamayı açamaz; bu bilgisayarda açılmalıdır. Oturum en fazla 8 saat hareketsiz kalır. Gönderimler oturum kapalıyken de backend açıksa çalışır.
+Yerel API giriş istemez. Yazma istekleri aynı kaynak denetimi ve özel başlık gerektirir. Mail doğrulama ve test gönderimleri dakika başına sınırlanır. Backend yalnızca 127.0.0.1’e bağlanır. İnternete açılacak bir sistem için kullanıcı ayrımı ve HTTPS gibi farklı bir mimari gerekir.
 
 ## Gönderim davranışı
 

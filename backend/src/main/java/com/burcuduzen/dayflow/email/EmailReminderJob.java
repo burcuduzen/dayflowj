@@ -16,16 +16,13 @@ public class EmailReminderJob {
     private final EmailDeliveryRepository deliveries;
     private final TaskRepository tasks;
     private final MailTransport mail;
-    private final com.burcuduzen.dayflow.auth.AccountRepository accounts;
-    public EmailReminderJob(EmailPreferencesRepository preferences, EmailDeliveryRepository deliveries, TaskRepository tasks, MailTransport mail, com.burcuduzen.dayflow.auth.AccountRepository accounts) {
-        this.preferences = preferences; this.deliveries = deliveries; this.tasks = tasks; this.mail = mail; this.accounts = accounts;
+    public EmailReminderJob(EmailPreferencesRepository preferences, EmailDeliveryRepository deliveries, TaskRepository tasks, MailTransport mail) {
+        this.preferences = preferences; this.deliveries = deliveries; this.tasks = tasks; this.mail = mail;
     }
     @Scheduled(fixedDelayString = "${dayflow.mail.poll-ms:60000}", initialDelay = 15000)
     public synchronized void check() {
-        var account = accounts.findById(1L).orElse(null);
-        if (account == null || !account.verified) return;
         var settings = preferences.findById(1L).orElse(null);
-        if (settings == null || !settings.enabled || settings.recipient == null || !mail.configured()) return;
+        if (settings == null || !settings.verified || !settings.enabled || settings.recipient == null || !mail.configured()) return;
         OffsetDateTime now = OffsetDateTime.now();
         for (Task task : tasks.findAllByOrderByCreatedAtDescIdDesc()) {
             if (task.isComplete() || !task.isReminderEnabled() || task.getDueDate() == null) continue;
@@ -33,7 +30,7 @@ public class EmailReminderJob {
             long seconds = Duration.between(now.toInstant(), task.getDueDate().toInstant()).getSeconds();
             String stage = stage(seconds);
             if (stage == null) continue;
-            String key = task.getId() + "|" + task.getDueDate().toInstant() + "|" + stage;
+            String key = EmailVerificationService.digest(settings.recipient) + "|" + task.getId() + "|" + task.getDueDate().toInstant() + "|" + stage;
             var delivery = deliveries.findById(key).orElseGet(() -> new EmailDelivery(key));
             if (delivery.sentAt != null || delivery.lastAttemptAt != null && delivery.lastAttemptAt.isAfter(now.minusMinutes(15))) continue;
             delivery.lastAttemptAt = now; deliveries.saveAndFlush(delivery);
@@ -43,7 +40,7 @@ public class EmailReminderJob {
             String when = current.getDueDate().atZoneSameInstant(ZoneId.of(current.getTimeZone())).format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm z"));
             String subject = "DayFlowJ · " + (stage.equals("DUE") ? "Görevin zamanı geldi" : "Yaklaşan görev");
             try {
-                mail.send(account.email, subject, current.getTitle() + "\n\nSon tarih: " + when + "\nÖncelik: " + current.getPriority()
+                mail.send(settings.recipient, subject, current.getTitle() + "\n\nSon tarih: " + when + "\nÖncelik: " + current.getPriority()
                     + "\n\nGörevini DayFlowJ’de aç: http://127.0.0.1:8080/\nE-posta hatırlatmalarını uygulamadaki E-posta ayarlarından kapatabilirsin.");
                 delivery.sentAt = OffsetDateTime.now(); deliveries.save(delivery);
             } catch (RuntimeException ex) {
