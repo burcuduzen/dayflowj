@@ -82,8 +82,9 @@ function render() {
   $('calendar-panel').hidden = !calendarView;
   $('calendar-workspace').hidden = !calendarView;
   $('new-event').hidden = !calendarView;
-  document.querySelector('.metrics').hidden = calendarView || notesView || analyticsView || planningView || focusView;
-  $('new-task').textContent = notesView ? '+ Yeni not' : '+ Yeni görev';
+  document.querySelector('.metrics').hidden = !calendarView;
+  $('new-task').textContent = '+ Yeni not';
+  $('new-task').hidden = !notesView;
   if (calendarView) { renderCalendar(); if (!eventState.loaded) loadCalendarEvents(); }
   if (notesView) renderNotes();
   $('task-list').setAttribute('aria-busy', String(state.loading));
