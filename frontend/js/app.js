@@ -650,36 +650,6 @@ $('quick-create').onclick = async () => {
   finally { setQuickBusy(false); }
 };
 
-let settingsBusy = false;
-let savedPlanningSettings = { focusMinutes: 25, breakMinutes: 5, workStart: '09:00', workEnd: '18:00' };
-function setSettingsBusy(busy) {
-  settingsBusy = busy;
-  $('settings-form').querySelectorAll('input,button').forEach(element => element.disabled = busy);
-}
-async function openSettings() {
-  $('settings-dialog').showModal(); $('settings-error').hidden = true; setSettingsBusy(true);
-  try {
-    const value = await settingsApi.get();
-    $('settings-goal').value = value.dailyTaskGoal; $('settings-zone').value = value.timeZone;
-    
-    savedPlanningSettings = { focusMinutes: value.focusMinutes, breakMinutes: value.breakMinutes, workStart: value.workStart, workEnd: value.workEnd };
-  } catch(error) { $('settings-error').textContent = error.message; $('settings-error').hidden = false; }
-  finally { setSettingsBusy(false); }
-}
-$('open-settings').onclick = openSettings;
-['close-settings','cancel-settings'].forEach(id => $(id).onclick = () => { if (!settingsBusy) $('settings-dialog').close(); });
-$('settings-dialog').addEventListener('cancel', event => { if (settingsBusy) event.preventDefault(); });
-$('settings-form').addEventListener('submit', async event => {
-  event.preventDefault(); if (settingsBusy) return;
-  setSettingsBusy(true); $('settings-error').hidden = true;
-  const data = {dailyTaskGoal:Number($('settings-goal').value),timeZone:$('settings-zone').value.trim(),
-    
-    ...savedPlanningSettings};
-  try { await settingsApi.save(data); $('settings-dialog').close(); notify('Ayarların kaydedildi.'); await loadProgress(); }
-  catch(error) { $('settings-error').textContent = error.message; $('settings-error').hidden = false; }
-  finally { setSettingsBusy(false); }
-});
-
 let analyticsBusy = false;
 async function loadAnalytics() {
   if (analyticsBusy) return;
