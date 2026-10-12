@@ -6,7 +6,6 @@ const eventState = { events: [], blocks: [], loaded: false, loading: false, edit
 const statusLabels = { TODO: 'Yapılacak', IN_PROGRESS: 'Devam ediyor', COMPLETED: 'Tamamlandı' };
 const priorityLabels = { HIGH: 'Yüksek öncelik', MEDIUM: 'Orta öncelik', LOW: 'Düşük öncelik' };
 const viewLabels = {
-  PLAN: ['Bugünkü planım', 'Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.', 'Sıradaki işler'],
   CALENDAR: ['Takvimin, görev haritan.', 'Bir gün seç, görevlerini gözden geçir ve sıradaki adımını ekle.', 'Takvim'],
   NOTES: ['Not defteri', 'Fikirlerini ve çalışma notlarını bir yerde tut.', 'Not defteri'],
   FOCUS: ['Focus', '', ''],
@@ -101,7 +100,6 @@ function render() {
   const status = $('status-filter').value;
   const priority = $('priority-filter').value;
   const visible = tasks.filter(task => {
-    if (state.view === 'PLAN' && (!isOpen(task) || task.dueDate && dayKey(task.dueDate) > dayKey(new Date()))) return false;
     if (state.view === 'TODAY' && !(isOpen(task) && isToday(task))) return false;
     if (state.view === 'UPCOMING' && !(isOpen(task) && isUpcoming(task))) return false;
     if (state.view === 'COMPLETED' && isOpen(task)) return false;
@@ -112,7 +110,7 @@ function render() {
   $('visible-count').textContent = `${visible.length} görev`;
   const empty = state.loaded && visible.length === 0;
   $('empty-state').hidden = !empty;
-  const firstTask = tasks.length === 0 && ['ALL', 'PLAN'].includes(state.view) && !query && !status && !priority;
+  const firstTask = tasks.length === 0 && state.view === 'ALL' && !query && !status && !priority;
   $('empty-title').textContent = firstTask ? 'Yeni bir başlangıca yer var.' : 'Bu görünümde görev yok.';
   $('empty-description').textContent = firstTask ? 'İlk görevini ekle, gününü adım adım planla.' : 'Başka bir görünüm seçebilir veya filtreleri değiştirebilirsin.';
   $('empty-add').hidden = !firstTask;
