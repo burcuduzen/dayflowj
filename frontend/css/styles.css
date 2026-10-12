@@ -112,3 +112,8 @@
 .clock-controls button:hover{background:#fff2be}.clock-controls button:active{transform:translateY(3px);box-shadow:0 1px 0 #24231f}.clock-controls button:focus-visible{outline:3px solid #1687b1;outline-offset:5px}
 .clock-feet{display:flex;justify-content:space-between;padding:0 80px;margin-top:-1px}.clock-feet i{width:80px;height:32px;background:#d6b652;border:10px solid #24231f;border-top-width:8px}
 @media(max-width:650px){#stopwatch-panel:not([hidden]){padding:48px 4px;min-height:55vh}.clock-case{border-width:8px;padding:26px 18px 18px}.clock-screen{border-width:8px;min-height:145px;padding:15px 6px}#stopwatch-time{font-size:clamp(17px,5vw,31px);letter-spacing:-1px}.clock-controls{gap:12px;padding-top:18px}.clock-controls button{min-width:0;padding:9px 12px;font-size:10px}.clock-feet{padding:0 45px}.clock-feet i{width:55px;height:26px;border-width:8px}}
+/* Summary values use neutral tones so they do not imply task priority. */
+.metrics .metric .smallcaps strong{color:var(--ink)}
+.metrics .meter i.filled{background:#777365}
+.metrics .metric-footer .tag{background:#e9dfc7;color:var(--ink)}
+
