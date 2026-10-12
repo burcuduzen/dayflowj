@@ -75,7 +75,7 @@ public class TaskService {
     private void afterStatusChange(Task task, boolean wasComplete) {
         if (!task.isComplete()) { if (wasComplete) task.restartReminder(); return; }
         if (!wasComplete && task.getId() != null && !activities.existsById(task.getId())) {
-            activities.save(new com.burcuduzen.dayflow.progress.CompletionActivity(task.getId(), task.getCompletedAt()));
+            activities.save(new com.burcuduzen.dayflow.progress.CompletionActivity(task.getId(), task.getCompletedAt(), task.getEstimatedMinutes()));
         }
         task.dismissReminder();
         if (wasComplete || task.isRecurrenceSpawned() || task.getRecurrence() == Recurrence.NONE || task.getDueDate() == null) return;

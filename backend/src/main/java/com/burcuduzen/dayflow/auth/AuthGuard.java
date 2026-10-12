@@ -10,10 +10,20 @@ import java.util.*;
 /** Local app requests need no login; writes must originate in the app. */
 @Component
 public class AuthGuard implements HandlerInterceptor {
+    @org.springframework.beans.factory.annotation.Value("${dayflow.desktop.managed:false}")
+    private boolean desktopManaged;
     private final Map<String,Attempt> attempts=new LinkedHashMap<>();
     private record Attempt(long start,int count) {}
     @Override public boolean preHandle(HttpServletRequest request,HttpServletResponse response,Object handler) {
         response.setHeader("Cache-Control","no-store");response.setHeader("Referrer-Policy","no-referrer");
+        String path=request.getRequestURI();
+        if(desktopManaged && !path.equals("/api/gmail/callback") && !path.equals("/api/email/verify")) {
+            String token=System.getenv("DAYFLOW_DESKTOP_CONTROL_TOKEN");
+            String supplied=request.getHeader("X-DayFlowJ-Desktop");
+            if(token==null || supplied==null || !java.security.MessageDigest.isEqual(
+                token.getBytes(java.nio.charset.StandardCharsets.UTF_8), supplied.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Bu işlem DayFlowJ masaüstü penceresinden yapılmalı.");
+        }
         boolean mutation=!Set.of("GET","HEAD","OPTIONS").contains(request.getMethod());
         if(mutation) {
             if(!"1".equals(request.getHeader("X-DayFlowJ-Request"))) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"İstek doğrulanamadı.");

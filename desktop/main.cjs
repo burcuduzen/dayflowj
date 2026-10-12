@@ -1,101 +1,230 @@
-const { app, BrowserWindow, dialog, shell, session } = require('electron');
-const { spawn } = require('node:child_process');
+const {
+  app,
+  BrowserWindow,
+  dialog,
+  shell,
+  session,
+  Menu,
+} = require('electron');
 const path = require('node:path');
-const fs = require('node:fs');
-
-const root = app.isPackaged
-  ? path.resolve(process.resourcesPath, '../../..')
-  : path.resolve(__dirname, '..');
-const origin = 'http://127.0.0.1:8080';
-let mainWindow;
-let backendProcess;
-let closing = false;
+const fs = require('node:fs/promises');
+const { pipeline } = require('node:stream/promises');
+const { Readable } = require('node:stream');
+const { Backend } = require('./backend.cjs');
 
 app.setName('DayFlowJ');
 app.setAppUserModelId('com.burcuduzen.dayflowj');
-// Keep desktop preferences and stopwatch state across app updates.
 app.setPath('userData', path.join(app.getPath('appData'), 'DayFlowJ'));
+const root = app.isPackaged
+  ? process.resourcesPath
+  : path.resolve(__dirname, '..');
+const dataDirectory =
+  process.env.DAYFLOW_DESKTOP_DATA_DIR ||
+  path.join(app.getPath('userData'), 'data');
+const backend = new Backend({
+  root,
+  dataDirectory,
+  legacyDirectory: app.isPackaged
+    ? process.env.DAYFLOW_LEGACY_DATA_DIR ||
+      path.join(
+        app.getPath('home'),
+        'Downloads',
+        'dayflowj-main',
+        'backend',
+        'data',
+      )
+    : undefined,
+});
+let mainWindow;
+let quitting = false;
 
 function localAddress(value) {
-  try { return new URL(value).origin === origin; } catch { return false; }
-}
-function externalAddress(value) {
-  try { return new URL(value).protocol === 'https:'; } catch { return false; }
-}
-async function backendReady() {
   try {
-    const response = await fetch(`${origin}/api/settings`, { signal: AbortSignal.timeout(1200) });
-    if (!response.ok) return false;
-    const settings = await response.json();
-    return typeof settings.dailyTaskGoal === 'number' && typeof settings.timeZone === 'string';
-  } catch { return false; }
-}
-async function startBackend() {
-  if (await backendReady()) return;
-  const script = path.join(root, 'desktop', 'Start-Backend.ps1');
-  if (!fs.existsSync(script)) throw new Error('Backend başlatma dosyası bulunamadı. Proje klasörünü taşımadan tekrar dene.');
-  backendProcess = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script], {
-    cwd: path.join(root, 'backend'), windowsHide: true, stdio: 'ignore'
-  });
-  let launchError;
-  backendProcess.on('error', error => { launchError = error; });
-  for (let attempt = 0; attempt < 60; attempt++) {
-    if (launchError) throw launchError;
-    if (await backendReady()) return;
-    if (backendProcess.exitCode !== null) throw new Error('Backend başlayamadı. backend/data içindeki desktop loglarını kontrol et.');
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    return new URL(value).origin === backend.origin;
+  } catch {
+    return false;
   }
-  throw new Error('Backend 60 saniye içinde hazırlanamadı. backend/data içindeki desktop loglarını kontrol et.');
 }
-function stopOwnedBackend() {
-  if (!backendProcess || !backendProcess.pid || backendProcess.exitCode !== null) return;
-  // Kill only this app's child process tree; never an already-running server.
-  spawn('taskkill.exe', ['/PID', String(backendProcess.pid), '/T', '/F'], {
-    windowsHide: true, stdio: 'ignore'
-  }).unref();
-  backendProcess = undefined;
+async function showError(error) {
+  await dialog.showMessageBox(mainWindow, {
+    type: 'error',
+    title: 'DayFlowJ',
+    message: error.message,
+  });
+}
+async function exportBackup() {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Verilerini yedekle',
+    defaultPath: `DayFlowJ-${new Date().toISOString().slice(0, 10)}.zip`,
+    filters: [{ name: 'DayFlowJ yedeği', extensions: ['zip'] }],
+  });
+  if (result.canceled) return;
+  try {
+    const response = await fetch(`${backend.origin}/api/backups/export`, {
+      method: 'POST',
+      headers: backend.headers,
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok)
+      throw new Error('Yedek oluşturulamadı. Verilerin değişmedi.');
+    const temporary = `${result.filePath}.pending`;
+    try {
+      await pipeline(
+        Readable.fromWeb(response.body),
+        require('node:fs').createWriteStream(temporary),
+      );
+      await fs.rename(temporary, result.filePath);
+    } finally {
+      await fs.rm(temporary, { force: true });
+    }
+    await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      message: 'Yedeğin kaydedildi.',
+    });
+  } catch (error) {
+    await showError(error);
+  }
+}
+async function restoreBackup() {
+  const selected = await dialog.showOpenDialog(mainWindow, {
+    title: 'Yedeği seç',
+    properties: ['openFile'],
+    filters: [{ name: 'DayFlowJ yedeği', extensions: ['zip'] }],
+  });
+  if (selected.canceled) return;
+  const choice = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    message: 'Seçtiğin yedek geri yüklensin mi?',
+    detail:
+      'Mevcut verilerin önce otomatik yedeği alınacak. Ardından seçtiğin yedekteki kayıtlar açılacak.',
+    buttons: ['Vazgeç', 'Geri yükle'],
+    defaultId: 0,
+    cancelId: 0,
+  });
+  if (choice.response !== 1) return;
+  mainWindow.hide();
+  try {
+    await backend.restore(selected.filePaths[0]);
+    await mainWindow.loadURL(backend.origin);
+  } catch (error) {
+    await showError(error);
+    if (backend.origin) await mainWindow.loadURL(backend.origin);
+  } finally {
+    mainWindow.show();
+  }
+}
+function configureSession() {
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    if (localAddress(details.url))
+      details.requestHeaders['X-DayFlowJ-Desktop'] = backend.token;
+    callback({ requestHeaders: details.requestHeaders });
+  });
+  session.defaultSession.setPermissionRequestHandler(
+    (contents, permission, callback) => {
+      callback(
+        permission === 'notifications' && localAddress(contents.getURL()),
+      );
+    },
+  );
+  session.defaultSession.setPermissionCheckHandler(
+    (contents, permission, origin) =>
+      permission === 'notifications' && localAddress(origin),
+  );
 }
 async function openWindow() {
   mainWindow = new BrowserWindow({
-    title: 'DayFlowJ', width: 1320, height: 900, minWidth: 760, minHeight: 600,
-    backgroundColor: '#f3e8c6', show: false, autoHideMenuBar: true,
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true }
+    title: 'DayFlowJ',
+    width: 1320,
+    height: 900,
+    minWidth: 760,
+    minHeight: 600,
+    backgroundColor: '#f3e8c6',
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+    },
   });
-  mainWindow.removeMenu();
-  mainWindow.webContents.on('page-title-updated', event => { event.preventDefault(); mainWindow.setTitle('DayFlowJ'); });
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (localAddress(url)) return;
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      {
+        label: 'Veriler',
+        submenu: [
+          { label: 'Yedek al…', click: exportBackup },
+          { label: 'Yedekten geri yükle…', click: restoreBackup },
+          {
+            label: 'Veri klasörünü aç',
+            click: () => shell.openPath(dataDirectory),
+          },
+          { type: 'separator' },
+          { role: 'quit', label: 'Çıkış' },
+        ],
+      },
+      {
+        label: 'Görünüm',
+        submenu: [
+          { role: 'resetZoom', label: 'Normal boyut' },
+          { role: 'zoomIn', label: 'Büyüt' },
+          { role: 'zoomOut', label: 'Küçült' },
+        ],
+      },
+    ]),
+  );
+  mainWindow.webContents.on('page-title-updated', (event) => {
     event.preventDefault();
-    if (externalAddress(url)) shell.openExternal(url);
+    mainWindow.setTitle('DayFlowJ');
+  });
+  const openExternal = (url) => {
+    try {
+      if (new URL(url).protocol === 'https:') shell.openExternal(url);
+    } catch {}
+  };
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!localAddress(url)) {
+      event.preventDefault();
+      openExternal(url);
+    }
   });
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (externalAddress(url)) shell.openExternal(url);
+    openExternal(url);
     return { action: 'deny' };
   });
-  mainWindow.webContents.on('will-attach-webview', event => event.preventDefault());
-  mainWindow.webContents.session.on('will-download', event => event.preventDefault());
-  mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.on('closed', () => { mainWindow = undefined; });
-  await mainWindow.loadURL(`${origin}/`);
+  mainWindow.webContents.on('will-attach-webview', (event) =>
+    event.preventDefault(),
+  );
+  mainWindow.on('closed', () => {
+    mainWindow = undefined;
+  });
+  await mainWindow.loadURL(backend.origin);
   mainWindow.show();
 }
 
-if (!app.requestSingleInstanceLock()) {
-  app.quit();
-} else {
+if (!app.requestSingleInstanceLock()) app.quit();
+else {
   app.on('second-instance', () => {
-    if (mainWindow) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus(); }
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
   app.whenReady().then(async () => {
-    session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
-      callback(permission === 'notifications' && localAddress(contents.getURL()));
-    });
-    session.defaultSession.setPermissionCheckHandler((contents, permission, requestingOrigin) =>
-      permission === 'notifications' && localAddress(requestingOrigin));
-    try { await startBackend(); await openWindow(); }
-    catch (error) { dialog.showErrorBox('DayFlowJ açılamadı', error.message); app.quit(); }
+    try {
+      await backend.start();
+      configureSession();
+      await openWindow();
+    } catch (error) {
+      dialog.showErrorBox('DayFlowJ açılamadı', error.message);
+      app.quit();
+    }
   });
   app.on('window-all-closed', () => app.quit());
-  app.on('before-quit', () => { if (!closing) { closing = true; stopOwnedBackend(); } });
+  app.on('before-quit', (event) => {
+    if (quitting) return;
+    event.preventDefault();
+    quitting = true;
+    backend.stop().finally(() => app.quit());
+  });
 }
-

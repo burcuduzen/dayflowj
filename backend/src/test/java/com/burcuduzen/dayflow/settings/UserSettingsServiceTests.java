@@ -18,7 +18,6 @@ class UserSettingsServiceTests {
         UserSettings settings = service.get();
         assertEquals(3, settings.getDailyTaskGoal());
         assertEquals(LocalTime.of(9, 0), settings.getWorkStart());
-        assertEquals(25, settings.getFocusMinutes());
     }
 
     @Test
@@ -27,18 +26,17 @@ class UserSettingsServiceTests {
         when(repository.findById(1L)).thenReturn(Optional.of(existing));
         when(repository.save(existing)).thenReturn(existing);
         UserSettings updated = service.update(5, LocalTime.of(8, 30), LocalTime.of(17, 0),
-            50, 10, "Europe/London");
+            "Europe/London");
         assertEquals(5, updated.getDailyTaskGoal());
         assertEquals("Europe/London", updated.getTimeZone());
-        assertEquals(50, updated.getFocusMinutes());
     }
 
     @Test
     void rejectsInvalidWorkingHoursAndTimeZone() {
         assertThrows(ResponseStatusException.class, () -> service.update(3, LocalTime.NOON, LocalTime.NOON,
-            25, 5, "Europe/Istanbul"));
+            "Europe/Istanbul"));
         assertThrows(ResponseStatusException.class, () -> service.update(3, LocalTime.of(9, 0), LocalTime.of(18, 0),
-            25, 5, "Mars/Olympus"));
+            "Mars/Olympus"));
         verifyNoInteractions(repository);
     }
 }

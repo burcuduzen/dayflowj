@@ -1,77 +1,771 @@
 <!doctype html>
 <html lang="tr">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f7fb"><title>DayFlowJ · Görevlerin</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Press+Start+2P&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20261012-static-info-1"><script type="module" src="/js/app.js?v=20261012-no-all-tasks-1"></script>
-</head>
-<body>
-<div class="shell">
-  <main id="planner">
-    <header class="topbar"><a class="brand pixel" href="/">DAY<span>✦</span>FLOWJ</a><div class="toplinks"><span class="chip" id="date-label"></span><span class="chip streak-chip">🔥 <b id="streak-count">0</b> GÜN SERİ</span><span class="chip">✓ <b id="done-stat">0</b> TAMAMLANDI</span><button class="secondary" id="open-gmail">Mailden takvime</button><button class="secondary" id="open-email">Maille hatırlat</button><button class="secondary" id="enable-notifications">Bildirimleri aç</button></div></header>
-    <nav aria-label="Görev görünümleri">
-      <button class="nav-item active" data-view="CALENDAR" aria-current="page"><span>▦</span> Takvim</button>
-      <button class="nav-item" data-view="UPCOMING"><span>↗</span> Yaklaşanlar <b id="upcoming-count">0</b></button>
-      <button class="nav-item" data-view="COMPLETED"><span>✓</span> Tamamlananlar <b id="completed-count">0</b></button>
-      
-      <button class="nav-item" data-view="NOTES"><span>≡</span> Not defteri</button>
-      <button class="nav-item" data-view="FOCUS"><span>◎</span> Focus</button><button class="nav-item" data-view="ANALYTICS"><span>⌁</span> Analiz</button>
-      <button class="nav-item" data-view="PLANNING"><span>✦</span> Otomatik planla</button>
-    </nav>    <section class="page-heading"><div><p class="eyebrow">Gününü planla</p><h1 id="view-title" class="pixel">Takvimin, görev haritan</h1><p id="view-description">Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.</p></div><div class="heading-actions"><button class="secondary" id="refresh" aria-label="Görevleri yenile">↻ Yenile</button><button class="secondary" id="new-event" hidden><span aria-hidden="true">＋</span> Etkinlik</button><button class="primary" id="new-task" hidden><span aria-hidden="true">＋</span> Yeni görev</button></div></section>
-    <section hidden class="quick-capture" aria-labelledby="quick-title"><div><span class="quick-icon">✦</span><div><h2 id="quick-title">Aklındakini yaz</h2><p>“Yarın saat 14:30 acil 45 dk sunumu hazırla” gibi.</p></div></div><form id="quick-form"><input id="quick-text" maxlength="500" required placeholder="Görevini doğal dille yaz…" aria-label="Doğal dille görev"><button class="secondary" type="submit">Önizle</button></form><div id="quick-result" class="quick-result" hidden><div><strong id="quick-result-title"></strong><span id="quick-result-meta"></span></div><button id="quick-create" class="primary" type="button">Görevi oluştur</button></div><p id="quick-error" class="form-error" hidden></p></section>
-    <div id="load-error" class="error-banner" role="alert" hidden></div>
-    <section id="reminders-panel" class="reminders-panel" aria-label="Zamanı gelen hatırlatmalar" hidden><div class="reminder-heading"><h2>Zamanı geldi</h2><span id="reminder-state" role="status"></span></div><div id="reminder-list"></div></section>
-    <section class="metrics" aria-label="Görev özeti">
-      <article class="metric"><h2 class="metric-heading pixel"><span class="metric-icon">⚔</span> Günlük görevler</h2><p class="hint">Bugüne tarihlediğin görevlerin ne kadarını tamamladığını gör.</p><div class="smallcaps"><span>BUGÜNKÜ İLERLEME</span><strong id="daily-ratio">0 / 0</strong></div><div class="meter green" id="daily-meter" role="meter" aria-label="Bugünkü görevlerin tamamlanma oranı" aria-valuemin="0" aria-valuemax="100"></div><div class="metric-footer"><small><b id="today-stat">0</b> GÖREV BEKLİYOR</small><span class="tag green">BUGÜN</span></div></article>
-      <article class="metric"><h2 class="metric-heading pixel"><span class="metric-icon">◈</span> Görev ilerlemesi</h2><p class="hint">Tüm kayıtlı görevlerin içinde tamamlananların oranı.</p><div class="smallcaps"><span>TAMAMLANMA</span><strong id="progress-stat">0<em>%</em></strong></div><div class="meter orange" id="completion-meter" role="meter" aria-label="Tüm görevlerin tamamlanma oranı" aria-valuemin="0" aria-valuemax="100"></div><div class="progress-track sr-only"><div id="progress-bar"></div></div><div class="metric-footer"><small><b id="open-stat">0</b> AÇIK GÖREV</small><span class="tag orange">İLERLEME</span></div></article>
-      <article class="metric"><h2 class="metric-heading pixel"><span class="metric-icon">▣</span> Öncelikli işler</h2><p class="hint">Yüksek öncelikli açık görevleri gündeminde tut.</p><div class="smallcaps"><span>YÜKSEK / AÇIK GÖREV</span><strong id="priority-ratio">0 / 0</strong></div><div class="meter red" id="priority-meter" role="meter" aria-label="Açık görevlerde yüksek öncelik oranı" aria-valuemin="0" aria-valuemax="100"></div><div class="metric-footer"><small>AJANDANI KONTROL ET</small><span class="tag red" id="priority-tag">0 ÖNCELİKLİ</span></div></article>
-    </section>
-    <section id="tasks-panel" class="task-panel" aria-labelledby="list-title">
-      <div class="panel-heading"><div><h2 id="list-title">Görevlerin</h2><span id="visible-count">Yükleniyor…</span></div></div>
-      <div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Görevlerde ara…" aria-label="Görevlerde ara"></label><label class="filter-label"><span class="sr-only">Durum filtresi</span><select id="status-filter"><option value="">Tüm durumlar</option><option value="TODO">Yapılacak</option><option value="IN_PROGRESS">Devam ediyor</option><option value="COMPLETED">Tamamlandı</option></select></label><label class="filter-label"><span class="sr-only">Öncelik filtresi</span><select id="priority-filter"><option value="">Tüm öncelikler</option><option value="HIGH">Yüksek</option><option value="MEDIUM">Orta</option><option value="LOW">Düşük</option></select></label></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f7fb" />
+    <title>DayFlowJ · Görevlerin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Press+Start+2P&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/styles.css?v=20261012-static-info-1" />
+    <script
+      type="module"
+      src="/js/app.js?v=20261012-desktop-maintenance-1"
+    ></script>
+  </head>
+  <body>
+    <div class="shell">
+      <main id="planner">
+        <header class="topbar">
+          <a class="brand pixel" href="/">DAY<span>✦</span>FLOWJ</a>
+          <div class="toplinks">
+            <span class="chip" id="date-label"></span
+            ><span class="chip streak-chip"
+              >🔥 <b id="streak-count">0</b> GÜN SERİ</span
+            ><span class="chip">✓ <b id="done-stat">0</b> TAMAMLANDI</span
+            ><button class="secondary" id="open-gmail">Mailden takvime</button
+            ><button class="secondary" id="open-email">Maille hatırlat</button
+            ><button class="secondary" id="enable-notifications">
+              Bildirimleri aç
+            </button>
+          </div>
+        </header>
+        <nav aria-label="Görev görünümleri">
+          <button
+            class="nav-item active"
+            data-view="CALENDAR"
+            aria-current="page"
+          >
+            <span>▦</span> Takvim
+          </button>
+          <button class="nav-item" data-view="UPCOMING">
+            <span>↗</span> Yaklaşanlar <b id="upcoming-count">0</b>
+          </button>
+          <button class="nav-item" data-view="COMPLETED">
+            <span>✓</span> Tamamlananlar <b id="completed-count">0</b>
+          </button>
 
-      <div id="task-list" aria-busy="true"></div>
-      <div id="empty-state" class="empty-state" hidden><div class="empty-icon">✓</div><h3 id="empty-title">Yeni bir başlangıca yer var.</h3><p id="empty-description">İlk görevini ekle, gününü adım adım planla.</p><button class="secondary" id="empty-add">İlk görevini ekle</button></div>
-      <footer class="panel-footer"><span>Bir işi bitirince soldaki kutuyu işaretle.</span><span id="remaining-label"></span></footer>
-    </section>
-    <div id="calendar-workspace" class="calendar-workspace">
-    <section id="calendar-panel" class="task-panel" hidden aria-label="Görev takvimi">
-      <div class="panel-heading calendar-toolbar"><div><button id="calendar-prev" class="icon-button" aria-label="Önceki dönem">←</button><h2 id="calendar-title"></h2><button id="calendar-next" class="icon-button" aria-label="Sonraki dönem">→</button></div><div><button id="calendar-today" class="secondary">Bugüne dön</button><label><span class="sr-only">Takvim görünümü</span><select id="calendar-mode"><option value="MONTH">Ay</option><option value="WEEK">Hafta</option><option value="DAY">Gün</option></select></label></div></div>
-      <div id="calendar-grid"></div><div class="legend"><span><i class="dot HIGH"></i> YÜKSEK</span><span><i class="dot MEDIUM"></i> ORTA</span><span><i class="dot LOW"></i> DÜŞÜK</span><span><i class="dot completed"></i> TAMAMLANAN</span></div>
-    </section>
-    <aside class="task-panel agenda-panel"><div class="agenda-title"><h2 class="pixel">GÖREV GÜNLÜĞÜ</h2><span class="tag blue">AJANDA</span></div><p id="selected-label" class="selected-label"></p><div id="agenda-list" aria-live="polite"></div><form id="agenda-form" class="add-form"><label class="field">YENİ GÖREV<input id="agenda-title" required maxlength="200" placeholder="Görev başlığı"></label><div class="form-grid"><label class="field">SAAT<input id="agenda-time" type="time" value="09:00" required></label><label class="field">ÖNCELİK<select id="agenda-priority"><option value="MEDIUM">Orta</option><option value="HIGH">Yüksek</option><option value="LOW">Düşük</option></select></label></div><p id="agenda-error" class="form-error" role="alert" hidden></p><button class="primary" type="submit" id="agenda-save">+ GÖREV EKLE</button></form></aside>
+          <button class="nav-item" data-view="NOTES">
+            <span>≡</span> Not defteri
+          </button>
+          <button class="nav-item" data-view="FOCUS">
+            <span>◎</span> Focus</button
+          ><button class="nav-item" data-view="ANALYTICS">
+            <span>⌁</span> Analiz
+          </button>
+          <button class="nav-item" data-view="PLANNING">
+            <span>✦</span> Otomatik planla
+          </button>
+        </nav>
+        <section class="page-heading">
+          <div>
+            <p class="eyebrow">Gününü planla</p>
+            <h1 id="view-title" class="pixel">Takvimin, görev haritan</h1>
+            <p id="view-description">
+              Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.
+            </p>
+          </div>
+          <div class="heading-actions">
+            <button
+              class="secondary"
+              id="refresh"
+              aria-label="Görevleri yenile"
+            >
+              ↻ Yenile</button
+            ><button class="secondary" id="new-event" hidden>
+              <span aria-hidden="true">＋</span> Etkinlik</button
+            ><button class="primary" id="new-task" hidden>
+              <span aria-hidden="true">＋</span> Yeni görev
+            </button>
+          </div>
+        </section>
+        <section hidden class="quick-capture" aria-labelledby="quick-title">
+          <div>
+            <span class="quick-icon">✦</span>
+            <div>
+              <h2 id="quick-title">Aklındakini yaz</h2>
+              <p>“Yarın saat 14:30 acil 45 dk sunumu hazırla” gibi.</p>
+            </div>
+          </div>
+          <form id="quick-form">
+            <input
+              id="quick-text"
+              maxlength="500"
+              required
+              placeholder="Görevini doğal dille yaz…"
+              aria-label="Doğal dille görev"
+            /><button class="secondary" type="submit">Önizle</button>
+          </form>
+          <div id="quick-result" class="quick-result" hidden>
+            <div>
+              <strong id="quick-result-title"></strong
+              ><span id="quick-result-meta"></span>
+            </div>
+            <button id="quick-create" class="primary" type="button">
+              Görevi oluştur
+            </button>
+          </div>
+          <p id="quick-error" class="form-error" hidden></p>
+        </section>
+        <div id="load-error" class="error-banner" role="alert" hidden></div>
+        <section
+          id="reminders-panel"
+          class="reminders-panel"
+          aria-label="Zamanı gelen hatırlatmalar"
+          hidden
+        >
+          <div class="reminder-heading">
+            <h2>Zamanı geldi</h2>
+            <span id="reminder-state" role="status"></span>
+          </div>
+          <div id="reminder-list"></div>
+        </section>
+        <section class="metrics" aria-label="Görev özeti">
+          <article class="metric">
+            <h2 class="metric-heading pixel">
+              <span class="metric-icon">⚔</span> Günlük görevler
+            </h2>
+            <p class="hint">
+              Bugüne tarihlediğin görevlerin ne kadarını tamamladığını gör.
+            </p>
+            <div class="smallcaps">
+              <span>BUGÜNKÜ İLERLEME</span
+              ><strong id="daily-ratio">0 / 0</strong>
+            </div>
+            <div
+              class="meter green"
+              id="daily-meter"
+              role="meter"
+              aria-label="Bugünkü görevlerin tamamlanma oranı"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            ></div>
+            <div class="metric-footer">
+              <small><b id="today-stat">0</b> GÖREV BEKLİYOR</small
+              ><span class="tag green">BUGÜN</span>
+            </div>
+          </article>
+          <article class="metric">
+            <h2 class="metric-heading pixel">
+              <span class="metric-icon">◈</span> Görev ilerlemesi
+            </h2>
+            <p class="hint">
+              Tüm kayıtlı görevlerin içinde tamamlananların oranı.
+            </p>
+            <div class="smallcaps">
+              <span>TAMAMLANMA</span
+              ><strong id="progress-stat">0<em>%</em></strong>
+            </div>
+            <div
+              class="meter orange"
+              id="completion-meter"
+              role="meter"
+              aria-label="Tüm görevlerin tamamlanma oranı"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            ></div>
+            <div class="progress-track sr-only">
+              <div id="progress-bar"></div>
+            </div>
+            <div class="metric-footer">
+              <small><b id="open-stat">0</b> AÇIK GÖREV</small
+              ><span class="tag orange">İLERLEME</span>
+            </div>
+          </article>
+          <article class="metric">
+            <h2 class="metric-heading pixel">
+              <span class="metric-icon">▣</span> Öncelikli işler
+            </h2>
+            <p class="hint">Yüksek öncelikli açık görevleri gündeminde tut.</p>
+            <div class="smallcaps">
+              <span>YÜKSEK / AÇIK GÖREV</span
+              ><strong id="priority-ratio">0 / 0</strong>
+            </div>
+            <div
+              class="meter red"
+              id="priority-meter"
+              role="meter"
+              aria-label="Açık görevlerde yüksek öncelik oranı"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            ></div>
+            <div class="metric-footer">
+              <small>AJANDANI KONTROL ET</small
+              ><span class="tag red" id="priority-tag">0 ÖNCELİKLİ</span>
+            </div>
+          </article>
+        </section>
+        <section
+          id="tasks-panel"
+          class="task-panel"
+          aria-labelledby="list-title"
+        >
+          <div class="panel-heading">
+            <div>
+              <h2 id="list-title">Görevlerin</h2>
+              <span id="visible-count">Yükleniyor…</span>
+            </div>
+          </div>
+          <div class="toolbar">
+            <label class="search"
+              ><span aria-hidden="true">⌕</span
+              ><input
+                id="search"
+                type="search"
+                placeholder="Görevlerde ara…"
+                aria-label="Görevlerde ara" /></label
+            ><label class="filter-label"
+              ><span class="sr-only">Durum filtresi</span
+              ><select id="status-filter">
+                <option value="">Tüm durumlar</option>
+                <option value="TODO">Yapılacak</option>
+                <option value="IN_PROGRESS">Devam ediyor</option>
+                <option value="COMPLETED">Tamamlandı</option>
+              </select></label
+            ><label class="filter-label"
+              ><span class="sr-only">Öncelik filtresi</span
+              ><select id="priority-filter">
+                <option value="">Tüm öncelikler</option>
+                <option value="HIGH">Yüksek</option>
+                <option value="MEDIUM">Orta</option>
+                <option value="LOW">Düşük</option>
+              </select></label
+            >
+          </div>
+
+          <div id="task-list" aria-busy="true"></div>
+          <div id="empty-state" class="empty-state" hidden>
+            <div class="empty-icon">✓</div>
+            <h3 id="empty-title">Yeni bir başlangıca yer var.</h3>
+            <p id="empty-description">
+              İlk görevini ekle, gününü adım adım planla.
+            </p>
+            <button class="secondary" id="empty-add">İlk görevini ekle</button>
+          </div>
+          <footer class="panel-footer">
+            <span>Bir işi bitirince soldaki kutuyu işaretle.</span
+            ><span id="remaining-label"></span>
+          </footer>
+        </section>
+        <div id="calendar-workspace" class="calendar-workspace">
+          <section
+            id="calendar-panel"
+            class="task-panel"
+            hidden
+            aria-label="Görev takvimi"
+          >
+            <div class="panel-heading calendar-toolbar">
+              <div>
+                <button
+                  id="calendar-prev"
+                  class="icon-button"
+                  aria-label="Önceki dönem"
+                >
+                  ←
+                </button>
+                <h2 id="calendar-title"></h2>
+                <button
+                  id="calendar-next"
+                  class="icon-button"
+                  aria-label="Sonraki dönem"
+                >
+                  →
+                </button>
+              </div>
+              <div>
+                <button id="calendar-today" class="secondary">Bugüne dön</button
+                ><label
+                  ><span class="sr-only">Takvim görünümü</span
+                  ><select id="calendar-mode">
+                    <option value="MONTH">Ay</option>
+                    <option value="WEEK">Hafta</option>
+                    <option value="DAY">Gün</option>
+                  </select></label
+                >
+              </div>
+            </div>
+            <div id="calendar-grid"></div>
+            <div class="legend">
+              <span><i class="dot HIGH"></i> YÜKSEK</span
+              ><span><i class="dot MEDIUM"></i> ORTA</span
+              ><span><i class="dot LOW"></i> DÜŞÜK</span
+              ><span><i class="dot completed"></i> TAMAMLANAN</span>
+            </div>
+          </section>
+          <aside class="task-panel agenda-panel">
+            <div class="agenda-title">
+              <h2 class="pixel">GÖREV GÜNLÜĞÜ</h2>
+              <span class="tag blue">AJANDA</span>
+            </div>
+            <p id="selected-label" class="selected-label"></p>
+            <div id="agenda-list" aria-live="polite"></div>
+            <form id="agenda-form" class="add-form">
+              <label class="field"
+                >YENİ GÖREV<input
+                  id="agenda-title"
+                  required
+                  maxlength="200"
+                  placeholder="Görev başlığı"
+              /></label>
+              <div class="form-grid">
+                <label class="field"
+                  >SAAT<input
+                    id="agenda-time"
+                    type="time"
+                    value="09:00"
+                    required /></label
+                ><label class="field"
+                  >ÖNCELİK<select id="agenda-priority">
+                    <option value="MEDIUM">Orta</option>
+                    <option value="HIGH">Yüksek</option>
+                    <option value="LOW">Düşük</option>
+                  </select></label
+                >
+              </div>
+              <p id="agenda-error" class="form-error" role="alert" hidden></p>
+              <button class="primary" type="submit" id="agenda-save">
+                + GÖREV EKLE
+              </button>
+            </form>
+          </aside>
+        </div>
+        <section
+          id="notes-panel"
+          class="task-panel"
+          hidden
+          aria-label="Not defteri"
+        >
+          <div class="panel-heading">
+            <h2>Not defteri</h2>
+            <span id="note-count"></span>
+          </div>
+          <div class="toolbar">
+            <label class="search"
+              ><span aria-hidden="true">⌕</span
+              ><input
+                id="note-search"
+                type="search"
+                placeholder="Notlarında ara…"
+                aria-label="Notlarda ara"
+            /></label>
+          </div>
+          <div id="note-error" class="error-banner" role="alert" hidden></div>
+          <div id="note-list" class="note-list"></div>
+        </section>
+        <section id="stopwatch-panel" hidden aria-label="Focus kronometresi">
+          <div class="desk-clock">
+            <div class="clock-case">
+              <div class="clock-screen">
+                <output
+                  id="stopwatch-time"
+                  class="pixel"
+                  aria-label="Çalışma süresi"
+                  >00:00:00</output
+                >
+              </div>
+              <div class="clock-controls">
+                <button
+                  id="stopwatch-toggle"
+                  type="button"
+                  aria-label="Kronometreyi başlat"
+                >
+                  ▶ Başlat</button
+                ><button
+                  id="stopwatch-reset"
+                  type="button"
+                  aria-label="Kronometreyi sıfırla"
+                >
+                  ↺ Sıfırla
+                </button>
+              </div>
+            </div>
+            <div class="clock-feet" aria-hidden="true"><i></i><i></i></div>
+          </div>
+        </section>
+        <section
+          id="analytics-panel"
+          class="task-panel analytics-panel"
+          hidden
+          aria-label="Verimlilik analizi"
+        >
+          <div class="panel-heading">
+            <div>
+              <h2>Son 7 gün</h2>
+              <span id="analytics-range">Yükleniyor…</span>
+            </div>
+            <button id="analytics-refresh" class="secondary" type="button">
+              Yenile
+            </button>
+          </div>
+          <div id="analytics-error" class="error-banner" hidden></div>
+          <div class="analytics-totals">
+            <article>
+              <span>Tamamlanan</span><strong id="analytics-completed">—</strong
+              ><small>görev</small>
+            </article>
+            <article>
+              <span>Aktif gün</span><strong id="analytics-active-days">—</strong
+              ><small>gün</small>
+            </article>
+            <article>
+              <span>Tahmini süre</span
+              ><strong id="analytics-estimated">—</strong><small>dakika</small>
+            </article>
+            <article>
+              <span>Günlük ortalama</span
+              ><strong id="analytics-average">—</strong><small>görev</small>
+            </article>
+          </div>
+          <div
+            id="analytics-chart"
+            class="analytics-chart"
+            aria-label="Günlük tamamlanan görev grafiği"
+          ></div>
+        </section>
+        <section
+          id="planning-panel"
+          class="task-panel planning-panel"
+          hidden
+          aria-label="Otomatik planlama"
+        >
+          <div class="planning-layout">
+            <form id="planning-form" class="planning-form">
+              <div>
+                <p class="eyebrow">Akıllı yerleşim</p>
+                <h2>Boş zamanlarını görevlere ayır</h2>
+                <p>
+                  Son tarih, öncelik ve tahmini süreye göre çakışmasız bir plan
+                  oluştur.
+                </p>
+              </div>
+              <div class="form-grid">
+                <label class="field"
+                  >Başlangıç<input
+                    id="planning-from"
+                    type="date"
+                    required /></label
+                ><label class="field"
+                  >Bitiş<input id="planning-to" type="date" required /></label
+                ><label class="field"
+                  >Çalışma başlangıcı<input
+                    id="planning-start"
+                    type="time"
+                    required /></label
+                ><label class="field"
+                  >Çalışma bitişi<input id="planning-end" type="time" required
+                /></label>
+              </div>
+              <button class="primary" id="planning-suggest" type="submit">
+                Plan önerisi oluştur
+              </button>
+              <p id="planning-error" class="form-error" hidden></p>
+            </form>
+            <div class="planning-output">
+              <div class="panel-heading">
+                <div>
+                  <h2>Önerilen plan</h2>
+                  <span id="planning-summary">Henüz öneri oluşturulmadı.</span>
+                </div>
+                <button
+                  id="planning-approve"
+                  class="primary"
+                  type="button"
+                  hidden
+                >
+                  Planı onayla
+                </button>
+              </div>
+              <div id="planning-results" class="planning-results">
+                <p class="loading">Tarih aralığını seçip öneri oluştur.</p>
+              </div>
+              <div id="planning-existing" class="planned-list"></div>
+            </div>
+          </div>
+        </section>
+        <p class="bottom-note">
+          DayFlowJ · Kayıtların yalnızca yerel veritabanında saklanır.
+        </p>
+      </main>
     </div>
-    <section id="notes-panel" class="task-panel" hidden aria-label="Not defteri"><div class="panel-heading"><h2>Not defteri</h2><span id="note-count"></span></div><div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="note-search" type="search" placeholder="Notlarında ara…" aria-label="Notlarda ara"></label></div><div id="note-error" class="error-banner" role="alert" hidden></div><div id="note-list" class="note-list"></div></section>
-    <section id="stopwatch-panel" hidden aria-label="Focus kronometresi">
-  <div class="desk-clock">
-    <div class="clock-case">
-      <div class="clock-screen"><output id="stopwatch-time" class="pixel" aria-label="Çalışma süresi">00:00:00</output></div>
-      <div class="clock-controls"><button id="stopwatch-toggle" type="button" aria-label="Kronometreyi başlat">▶ Başlat</button><button id="stopwatch-reset" type="button" aria-label="Kronometreyi sıfırla">↺ Sıfırla</button></div>
-    </div>
-    <div class="clock-feet" aria-hidden="true"><i></i><i></i></div>
-  </div>
-</section><section id="analytics-panel" class="task-panel analytics-panel" hidden aria-label="Verimlilik analizi"><div class="panel-heading"><div><h2>Son 7 gün</h2><span id="analytics-range">Yükleniyor…</span></div><button id="analytics-refresh" class="secondary" type="button">Yenile</button></div><div id="analytics-error" class="error-banner" hidden></div><div class="analytics-totals"><article><span>Tamamlanan</span><strong id="analytics-completed">—</strong><small>görev</small></article><article><span>Aktif gün</span><strong id="analytics-active-days">—</strong><small>gün</small></article><article><span>Tahmini süre</span><strong id="analytics-estimated">—</strong><small>dakika</small></article><article><span>Günlük ortalama</span><strong id="analytics-average">—</strong><small>görev</small></article></div><div id="analytics-chart" class="analytics-chart" aria-label="Günlük tamamlanan görev grafiği"></div></section>
-    <section id="planning-panel" class="task-panel planning-panel" hidden aria-label="Otomatik planlama"><div class="planning-layout"><form id="planning-form" class="planning-form"><div><p class="eyebrow">Akıllı yerleşim</p><h2>Boş zamanlarını görevlere ayır</h2><p>Son tarih, öncelik ve tahmini süreye göre çakışmasız bir plan oluştur.</p></div><div class="form-grid"><label class="field">Başlangıç<input id="planning-from" type="date" required></label><label class="field">Bitiş<input id="planning-to" type="date" required></label><label class="field">Çalışma başlangıcı<input id="planning-start" type="time" required></label><label class="field">Çalışma bitişi<input id="planning-end" type="time" required></label></div><button class="primary" id="planning-suggest" type="submit">Plan önerisi oluştur</button><p id="planning-error" class="form-error" hidden></p></form><div class="planning-output"><div class="panel-heading"><div><h2>Önerilen plan</h2><span id="planning-summary">Henüz öneri oluşturulmadı.</span></div><button id="planning-approve" class="primary" type="button" hidden>Planı onayla</button></div><div id="planning-results" class="planning-results"><p class="loading">Tarih aralığını seçip öneri oluştur.</p></div><div id="planning-existing" class="planned-list"></div></div></div></section>
-    <p class="bottom-note">DayFlowJ · Kayıtların yalnızca yerel veritabanında saklanır.</p>
-  </main>
-</div>
-<dialog id="task-dialog" aria-labelledby="dialog-title">
-  <form id="task-form"><div class="dialog-header"><div><p class="eyebrow">BİR SONRAKİ ADIM</p><h2 id="dialog-title">Yeni görev</h2></div><button type="button" id="close-dialog" class="icon-button" aria-label="Pencereyi kapat">✕</button></div>
-    <label class="field">Görev başlığı <span class="required">*</span><input id="title" name="title" required maxlength="200" placeholder="Örneğin: Spring Boot çalış"></label>
-    <label class="field">Açıklama<textarea id="description" name="description" maxlength="5000" rows="3" placeholder="Eklemek istediğin ayrıntılar…"></textarea></label>
-    <div class="form-grid"><label class="field">Son tarih<input id="dueDate" name="dueDate" type="datetime-local"></label><label class="field">Tahmini süre (dakika)<input id="estimatedMinutes" name="estimatedMinutes" type="number" min="1" step="1" max="2147483647" placeholder="Örneğin: 45"></label><label class="field">Öncelik<select id="priority" name="priority"><option value="MEDIUM">Orta</option><option value="HIGH">Yüksek</option><option value="LOW">Düşük</option></select></label><label class="field" id="status-field" hidden>Durum<select id="status" name="status"><option value="TODO">Yapılacak</option><option value="IN_PROGRESS">Devam ediyor</option><option value="COMPLETED">Tamamlandı</option></select></label></div>
-    <div class="form-grid"><label class="field">Tekrarlama<select id="recurrence"><option value="NONE">Tek sefer</option><option value="DAILY">Her gün</option><option value="WEEKLY">Her hafta</option><option value="MONTHLY">Her ay</option></select></label><label class="field">Hatırlatma zamanı<select id="reminderMinutesBefore"><option value="0">Son tarihinde</option><option value="5">5 dakika önce</option><option value="15">15 dakika önce</option><option value="30">30 dakika önce</option><option value="60">1 saat önce</option><option value="1440">1 gün önce</option><option value="10080">1 hafta önce</option></select></label><label class="field reminder-setting"><input id="reminderEnabled" type="checkbox" checked> Hatırlatmayı aç</label></div>
-    <p id="form-error" class="form-error" role="alert" hidden></p><div class="dialog-footer"><button type="button" class="secondary" id="cancel-dialog">Vazgeç</button><button type="submit" class="primary" id="save-task">Görevi ekle</button></div>
-  </form>
-</dialog>
-<dialog id="note-dialog" aria-labelledby="note-dialog-title"><form id="note-form"><div class="dialog-header"><h2 id="note-dialog-title">Yeni not</h2><button type="button" id="close-note" class="icon-button" aria-label="Not penceresini kapat">✕</button></div><label class="field">Başlık<input id="note-title" required maxlength="200" placeholder="Notun başlığı"></label><label class="field">İçerik<textarea id="note-content" maxlength="20000" rows="12" placeholder="Notunu yaz…"></textarea></label><p id="note-form-error" class="form-error" role="alert" hidden></p><div class="dialog-footer"><button type="button" class="secondary" id="cancel-note">Vazgeç</button><button type="submit" class="primary" id="save-note">Notu kaydet</button></div></form></dialog>
-<dialog id="gmail-dialog" aria-labelledby="gmail-title"><div class="dialog-header"><h2 id="gmail-title">Mailden takvime</h2><button type="button" id="close-gmail" class="icon-button" aria-label="Kapat">✕</button></div><p class="hint" id="gmail-status"></p><p class="hint">Seçtiğin maillerdeki toplantıları takvimine aktar. Kesinleşmeyen teklifler ve değişiklikler onay bekler. Gmail erişimi bu sürümde uygulama kapanınca sona erer; yeniden bağlamalısın.</p><button id="gmail-connect" class="primary" type="button">Gmail’i bağla</button><form id="gmail-preferences"><label class="field">İşlenecek mailler<input id="gmail-query" maxlength="500" required value="in:inbox newer_than:7d" placeholder="from:ornek@firma.com newer_than:7d"></label><label class="field reminder-setting"><input type="checkbox" id="gmail-auto"> Kesinleşmiş toplantıları otomatik ekle</label><p class="hint">Süre yazmıyorsa 30 dakika önerilir. İlk sürüm Türkçe düz metin, bugün/yarın ve YYYY-AA-GG tarihlerini işler. İptal veya saat değişikliğini sen onaylarsın.</p><div class="dialog-footer"><button class="secondary" type="submit">Tercihleri kaydet</button><button class="primary" type="button" id="gmail-sync">Şimdi kontrol et</button></div></form><p class="form-error" id="gmail-error" hidden role="alert"></p><div id="gmail-candidates" class="gmail-candidates"></div><button class="text-button" id="gmail-disconnect" type="button">Bağlantıyı kes</button></dialog>
-<dialog id="email-dialog" aria-labelledby="email-title"><form id="email-form"><div class="dialog-header"><h2 id="email-title">Maille hatırlat</h2><button type="button" id="close-email" class="icon-button" aria-label="Mail ayarlarını kapat">✕</button></div><p class="hint" id="email-connection">Durum yükleniyor…</p><label class="field">Mail adresin<input id="email-recipient" type="email" required maxlength="254" autocomplete="email" placeholder="sen@gmail.com"></label><label id="email-enabled-label" class="field reminder-setting" hidden><input type="checkbox" id="email-enabled"> Yaklaşan görevlerimi maille hatırlat</label><p class="hint">Adresini gir, gelen maildeki bağlantıya bu bilgisayarda bas. Kayıt veya parola gerekmez. Mail bildirimleri için uygulamanın backend’i açık kalmalı.</p><p id="email-error" class="form-error" role="alert" hidden></p><div class="dialog-footer"><button type="button" class="secondary" id="test-email" hidden>Test maili gönder</button><button type="submit" class="primary" id="save-email">Doğrulama maili gönder</button></div></form></dialog>
+    <dialog id="task-dialog" aria-labelledby="dialog-title">
+      <form id="task-form">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">BİR SONRAKİ ADIM</p>
+            <h2 id="dialog-title">Yeni görev</h2>
+          </div>
+          <button
+            type="button"
+            id="close-dialog"
+            class="icon-button"
+            aria-label="Pencereyi kapat"
+          >
+            ✕
+          </button>
+        </div>
+        <label class="field"
+          >Görev başlığı <span class="required">*</span
+          ><input
+            id="title"
+            name="title"
+            required
+            maxlength="200"
+            placeholder="Örneğin: Spring Boot çalış"
+        /></label>
+        <label class="field"
+          >Açıklama<textarea
+            id="description"
+            name="description"
+            maxlength="5000"
+            rows="3"
+            placeholder="Eklemek istediğin ayrıntılar…"
+          ></textarea>
+        </label>
+        <div class="form-grid">
+          <label class="field"
+            >Son tarih<input
+              id="dueDate"
+              name="dueDate"
+              type="datetime-local" /></label
+          ><label class="field"
+            >Tahmini süre (dakika)<input
+              id="estimatedMinutes"
+              name="estimatedMinutes"
+              type="number"
+              min="1"
+              step="1"
+              max="2147483647"
+              placeholder="Örneğin: 45" /></label
+          ><label class="field"
+            >Öncelik<select id="priority" name="priority">
+              <option value="MEDIUM">Orta</option>
+              <option value="HIGH">Yüksek</option>
+              <option value="LOW">Düşük</option>
+            </select></label
+          ><label class="field" id="status-field" hidden
+            >Durum<select id="status" name="status">
+              <option value="TODO">Yapılacak</option>
+              <option value="IN_PROGRESS">Devam ediyor</option>
+              <option value="COMPLETED">Tamamlandı</option>
+            </select></label
+          >
+        </div>
+        <div class="form-grid">
+          <label class="field"
+            >Tekrarlama<select id="recurrence">
+              <option value="NONE">Tek sefer</option>
+              <option value="DAILY">Her gün</option>
+              <option value="WEEKLY">Her hafta</option>
+              <option value="MONTHLY">Her ay</option>
+            </select></label
+          ><label class="field"
+            >Hatırlatma zamanı<select id="reminderMinutesBefore">
+              <option value="0">Son tarihinde</option>
+              <option value="5">5 dakika önce</option>
+              <option value="15">15 dakika önce</option>
+              <option value="30">30 dakika önce</option>
+              <option value="60">1 saat önce</option>
+              <option value="1440">1 gün önce</option>
+              <option value="10080">1 hafta önce</option>
+            </select></label
+          ><label class="field reminder-setting"
+            ><input id="reminderEnabled" type="checkbox" checked /> Hatırlatmayı
+            aç</label
+          >
+        </div>
+        <p id="form-error" class="form-error" role="alert" hidden></p>
+        <div class="dialog-footer">
+          <button type="button" class="secondary" id="cancel-dialog">
+            Vazgeç</button
+          ><button type="submit" class="primary" id="save-task">
+            Görevi ekle
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="note-dialog" aria-labelledby="note-dialog-title">
+      <form id="note-form">
+        <div class="dialog-header">
+          <h2 id="note-dialog-title">Yeni not</h2>
+          <button
+            type="button"
+            id="close-note"
+            class="icon-button"
+            aria-label="Not penceresini kapat"
+          >
+            ✕
+          </button>
+        </div>
+        <label class="field"
+          >Başlık<input
+            id="note-title"
+            required
+            maxlength="200"
+            placeholder="Notun başlığı" /></label
+        ><label class="field"
+          >İçerik<textarea
+            id="note-content"
+            maxlength="20000"
+            rows="12"
+            placeholder="Notunu yaz…"
+          ></textarea>
+        </label>
+        <p id="note-form-error" class="form-error" role="alert" hidden></p>
+        <div class="dialog-footer">
+          <button type="button" class="secondary" id="cancel-note">
+            Vazgeç</button
+          ><button type="submit" class="primary" id="save-note">
+            Notu kaydet
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="gmail-dialog" aria-labelledby="gmail-title">
+      <div class="dialog-header">
+        <h2 id="gmail-title">Mailden takvime</h2>
+        <button
+          type="button"
+          id="close-gmail"
+          class="icon-button"
+          aria-label="Kapat"
+        >
+          ✕
+        </button>
+      </div>
+      <p class="hint" id="gmail-status"></p>
+      <p class="hint">
+        Seçtiğin maillerdeki toplantıları takvimine aktar. Kesinleşmeyen
+        teklifler ve değişiklikler onay bekler. Gmail erişimi bu sürümde
+        uygulama kapanınca sona erer; yeniden bağlamalısın.
+      </p>
+      <button id="gmail-connect" class="primary" type="button">
+        Gmail’i bağla
+      </button>
+      <form id="gmail-preferences">
+        <label class="field"
+          >İşlenecek mailler<input
+            id="gmail-query"
+            maxlength="500"
+            required
+            value="in:inbox newer_than:7d"
+            placeholder="from:ornek@firma.com newer_than:7d" /></label
+        ><label class="field reminder-setting"
+          ><input type="checkbox" id="gmail-auto" /> Kesinleşmiş toplantıları
+          otomatik ekle</label
+        >
+        <p class="hint">
+          Süre yazmıyorsa 30 dakika önerilir. İlk sürüm Türkçe düz metin,
+          bugün/yarın ve YYYY-AA-GG tarihlerini işler. İptal veya saat
+          değişikliğini sen onaylarsın.
+        </p>
+        <div class="dialog-footer">
+          <button class="secondary" type="submit">Tercihleri kaydet</button
+          ><button class="primary" type="button" id="gmail-sync">
+            Şimdi kontrol et
+          </button>
+        </div>
+      </form>
+      <p class="form-error" id="gmail-error" hidden role="alert"></p>
+      <div id="gmail-candidates" class="gmail-candidates"></div>
+      <button class="text-button" id="gmail-disconnect" type="button">
+        Bağlantıyı kes
+      </button>
+    </dialog>
+    <dialog id="email-dialog" aria-labelledby="email-title">
+      <form id="email-form">
+        <div class="dialog-header">
+          <h2 id="email-title">Maille hatırlat</h2>
+          <button
+            type="button"
+            id="close-email"
+            class="icon-button"
+            aria-label="Mail ayarlarını kapat"
+          >
+            ✕
+          </button>
+        </div>
+        <p class="hint" id="email-connection">Durum yükleniyor…</p>
+        <label class="field"
+          >Mail adresin<input
+            id="email-recipient"
+            type="email"
+            required
+            maxlength="254"
+            autocomplete="email"
+            placeholder="sen@gmail.com" /></label
+        ><label id="email-enabled-label" class="field reminder-setting" hidden
+          ><input type="checkbox" id="email-enabled" /> Yaklaşan görevlerimi
+          maille hatırlat</label
+        >
+        <p class="hint">
+          Adresini gir, gelen maildeki bağlantıya bu bilgisayarda bas. Kayıt
+          veya parola gerekmez. Mail bildirimleri için uygulamanın backend’i
+          açık kalmalı.
+        </p>
+        <p id="email-error" class="form-error" role="alert" hidden></p>
+        <div class="dialog-footer">
+          <button type="button" class="secondary" id="test-email" hidden>
+            Test maili gönder</button
+          ><button type="submit" class="primary" id="save-email">
+            Doğrulama maili gönder
+          </button>
+        </div>
+      </form>
+    </dialog>
 
-<dialog id="event-dialog" aria-labelledby="event-dialog-title"><form id="event-form"><div class="dialog-header"><div><p class="eyebrow">Sabit zaman</p><h2 id="event-dialog-title">Yeni etkinlik</h2></div><button type="button" id="close-event" class="icon-button" aria-label="Etkinlik penceresini kapat">✕</button></div><label class="field">Etkinlik adı<input id="event-title" required maxlength="200" placeholder="Örneğin: Ekip toplantısı"></label><label class="field">Açıklama<textarea id="event-description" maxlength="2000" rows="3"></textarea></label><div class="form-grid"><label class="field">Başlangıç<input id="event-start" type="datetime-local" required></label><label class="field">Bitiş<input id="event-end" type="datetime-local" required></label></div><p id="event-error" class="form-error" hidden></p><div class="dialog-footer"><button type="button" class="secondary" id="delete-event" hidden>Etkinliği sil</button><button type="button" class="secondary" id="cancel-event">Vazgeç</button><button type="submit" class="primary" id="save-event">Kaydet</button></div></form></dialog>
-<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-</body></html>
-
+    <dialog id="event-dialog" aria-labelledby="event-dialog-title">
+      <form id="event-form">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Sabit zaman</p>
+            <h2 id="event-dialog-title">Yeni etkinlik</h2>
+          </div>
+          <button
+            type="button"
+            id="close-event"
+            class="icon-button"
+            aria-label="Etkinlik penceresini kapat"
+          >
+            ✕
+          </button>
+        </div>
+        <label class="field"
+          >Etkinlik adı<input
+            id="event-title"
+            required
+            maxlength="200"
+            placeholder="Örneğin: Ekip toplantısı" /></label
+        ><label class="field"
+          >Açıklama<textarea
+            id="event-description"
+            maxlength="2000"
+            rows="3"
+          ></textarea>
+        </label>
+        <div class="form-grid">
+          <label class="field"
+            >Başlangıç<input
+              id="event-start"
+              type="datetime-local"
+              required /></label
+          ><label class="field"
+            >Bitiş<input id="event-end" type="datetime-local" required
+          /></label>
+        </div>
+        <p id="event-error" class="form-error" hidden></p>
+        <div class="dialog-footer">
+          <button type="button" class="secondary" id="delete-event" hidden>
+            Etkinliği sil</button
+          ><button type="button" class="secondary" id="cancel-event">
+            Vazgeç</button
+          ><button type="submit" class="primary" id="save-event">Kaydet</button>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

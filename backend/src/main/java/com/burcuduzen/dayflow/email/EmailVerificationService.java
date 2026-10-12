@@ -57,4 +57,3 @@ public class EmailVerificationService {
         catch(GeneralSecurityException ex){throw new IllegalStateException("Doğrulama işlenemedi.");}
     }
 }
-
