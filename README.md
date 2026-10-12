@@ -1,64 +1,37 @@
 # DayFlowJ
 
-A local productivity app with notes, calendar, smart reminders, focus sessions, automatic planning, and productivity analytics. Built with Java.
+Windows için tek kullanıcılı, yerel görev ve takvim uygulaması. Electron masaüstü penceresi, Java 17 / Spring Boot backend ve dosya tabanlı H2 kullanır. Arayüz HTML, CSS ve JavaScript özellik modüllerinden oluşur.
 
-## Proje durumu
+## Kullanım
 
-Bu repo Spring Boot başlangıç projesini, özellik klasörlerini ve mimari planını içerir. Görev CRUD API’si ve durum güncelleme endpoint’i uygulandı. Görev arayüzü, not defteri, günlük/haftalık/aylık görev takvimi, tekrarlama, uygulama içi hatırlatma, izinli masaüstü bildirimi ve erteleme uygulandı.
+`desktop/dist/DayFlowJ-Setup-1.1.0.exe` kurulumunu aç. Kurulum masaüstüne DayFlowJ kısayolu ekler. Geliştirme bilgisayarında `desktop/dist/win-unpacked/DayFlowJ.exe` de doğrudan açılır. Java pakete dahildir; normal kullanımda terminal gerekmez.
 
-## Hedef teknoloji yapısı
+## Veriler ve yedekleme
 
-- Backend: Java, Spring Boot, Maven, Spring Data JPA ve Validation.
-- Frontend: HTML, CSS ve JavaScript.
-- Veritabanı: dosya tabanlı H2; veriler yerel bilgisayarda kalıcı tutulacak.
-- Tek kullanıcılı yerel uygulama; frontend ve backend aynı bilgisayarda çalışacak.
+Masaüstü sürümü kayıtları `%APPDATA%/DayFlowJ/data` içinde tutar. Kurulum dosyaları güncellenince bu klasör korunur. İlk açılışta eski `Downloads/dayflowj-main/backend/data` veritabanı yalnızca kapalıysa kopyalanır; orijinali silinmez. Eski uygulama/backend açıksa önce kapatılmalıdır.
 
-## Klasörler
+Veriler menüsünden ZIP yedeği alabilir, yedeği geri yükleyebilir veya veri klasörünü açabilirsin. Geri yükleme önce mevcut verinin kopyasını saklar. Başlangıç yedeklerinden son yedisi korunur; elle alınan yedekler otomatik silinmez. Yedekler kişisel verileri içerir; güvenli yerde sakla.
 
-| Klasör | Amaç |
-|---|---|
-| `backend/` | Java backend, iş kuralları ve REST API |
-| `frontend/` | Kullanıcı arayüzü ve API iletişimi |
-| `docs/` | Mimari ve geliştirme planı |
+Flyway veritabanı şemasını sürümlü SQL geçişleriyle yönetir. Hibernate şemayı değiştirmek yerine doğrular. Eski Focus tabloları geçmiş verileri silmemek için arşiv olarak veritabanında kalabilir; Focus API kaldırılmıştır.
 
-Boş klasörler Git tarafından takip edilsin diye `.gitkeep` dosyaları içerir. Gerçek dosyalar eklendiğinde bu yer tutucular kaldırılabilir.
+## Davranışlar
 
-## Geliştirme sırası
+Takvim başlangıç ekranıdır. Kronometre yalnızca başlat/duraklat/sıfırla işlevlerini içerir; yerel arayüz depolamasında saklanır, veritabanı ZIP yedeğine dahil değildir.
 
-1. Spring Boot altyapısı ve görev yönetimi API'si.
-2. Görev yönetimi arayüzü.
-3. Notlar ve takvim.
-4. Hatırlatıcılar.
-5. Focus mode.
-6. Verimlilik analizi.
-7. Otomatik planlama ve akıllı hatırlatıcılar.
+Seri ve analiz görevin ilk tamamlandığı günü sayar. Yeniden açıp tamamlamak ikinci kez sayılmaz. Görevi silmek geçmiş tamamlanma kaydını silmez. Analizdeki dakika gerçek çalışma ölçümü değil, ilk tamamlamadaki tahmini süredir; sonradan süre değiştirildiğinde geçmiş değişmez.
 
-Detaylar: [Mimari](docs/architecture.md), [Backend](backend/README.md), [Frontend](frontend/README.md).
+Masaüstü açılışı kendine ait backend başlatır; kapanışta kontrollü olarak kapatır. 8080 portu başka bir uygulamada kullanılıyorsa o uygulamayı benimsemez veya durdurmaz. Masaüstü API istekleri uygulamaya özel geçici anahtarla doğrulanır.
 
-## Backend’i çalıştırma
+## Gmail ve mail
 
-Java 17 kurulu olmalıdır. İlk çalıştırmada Maven ve bağımlılıkları indirmek için internet gerekir.
+Gmail bağlantısında kısa ömürlü, tek kullanımlık state ve PKCE vardır; sistem tarayıcısı ile Electron aynı oturum çerezini paylaşmak zorunda değildir. Gerçek Google hesabıyla izin ve uçtan uca gönderim ayrıca doğrulanmalıdır. SMTP TLS sertifika doğrulaması kapatılmaz. Kurumsal ağ sertifika hatası varsa güvenilir sertifika zinciri veya ağ erişimi düzeltilmelidir.
 
-macOS / Linux:
+Bağlantı sırları kaynak koda yazılmaz. Yerel DPAPI ayarları aynı Windows kullanıcısıyla okunur. Gmail OAuth belirteçleri bellektedir; uygulama yeniden açılınca bağlantı gerekebilir. Otomatik güncelleme yoktur; yeni kurulumla güncellenir.
 
-```sh
-cd backend
-./mvnw spring-boot:run
-```
+## Geliştirme ve doğrulama
 
-Windows:
+Backend: `backend/mvnw.cmd clean package`. Java 17 gerekir.
 
-```powershell
-cd backend
-.\mvnw.cmd spring-boot:run
-```
+Masaüstü: `desktop` içinde `pnpm install`, `pnpm test`, `pnpm run build`. Küçültülmüş Java ortamı `desktop/jre-small` içine hazırlanır. Installer electron-builder / NSIS ile üretilir.
 
-Backend `http://127.0.0.1:8080` adresinde çalışır. Arayüz için `http://127.0.0.1:8080` adresini aç. JSON görev listesi `http://127.0.0.1:8080/api/tasks` adresindedir. Ayrı frontend komutu gerekmez. H2 verileri backend klasöründen çalıştırıldığında `backend/data/` altında saklanır.
-
-Testleri çalıştırmak için backend klasöründe `./mvnw test` (Windows: `.\mvnw.cmd test`) kullan.
-
-Görev API’si kullanım örnekleri: [Görev API’si](docs/task-api.md).
-
-Güncel kapsam ve bildirim sınırları: [Özellik durumu](docs/features.md). Focus zamanlayıcısı, verimlilik analizi, sabit takvim etkinlikleri, otomatik planlama, kişisel ayarlar, günlük hedef ve kurallara dayalı doğal dille görev oluşturma hem backend API'leriyle hem de arayüzleriyle kullanılabilir. Erken hatırlatma seçimi görev formuna bağlandı. Devam serisi ve SMTP e-posta hatırlatmaları eklendi. E-posta için [yerel kurulum](docs/email-setup.md) gerekir.
-
-Uygulama kayıt veya giriş istemeden açılır. Maille hatırlatma isteğe bağlıdır: adresini gir, gelen bağlantıyı bu bilgisayarda aç ve doğrula. Gönderici hazır değilse görevler, notlar ve streak çalışmaya devam eder. Göndericiyi geliştirici bir kez yapılandırır: [Kurulum](docs/email-setup.md).
+Backend testleri iş kuralları, OAuth state, kapalı veritabanı taşıma, geçersiz yedek ve şema geçişlerini kapsar. Masaüstü entegrasyon testleri geçici verilerle açılış, özel API anahtarı, geçmiş süre, yedekleme/geri yükleme, kalıcılık, kontrollü kapanış ve port çakışmasını kontrol eder.

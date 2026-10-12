@@ -1,5 +1,4 @@
 package com.burcuduzen.dayflow.gmail;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.http.*;
@@ -13,26 +12,23 @@ import java.util.*;
 @RestController @RequestMapping("/api/gmail")
 public class GmailController {
     private final GmailService service;
-    public GmailController(GmailService service){this.service=service;}
+    private final OAuthAttempts attempts;
+    @org.springframework.beans.factory.annotation.Value("${dayflow.desktop.managed:false}") private boolean desktopManaged;
+    public GmailController(GmailService service, OAuthAttempts attempts){this.service=service;this.attempts=attempts;}
     @GetMapping("/status") public Map<String,Object> status(){return service.status();}
-    @PostMapping("/connect") public Map<String,String> connect(jakarta.servlet.http.HttpServletRequest request,HttpSession session)throws NoSuchAlgorithmException {
+    @PostMapping("/connect") public Map<String,String> connect(jakarta.servlet.http.HttpServletRequest request) {
         if(!"127.0.0.1".equals(request.getServerName()))throw new ResponseStatusException(HttpStatus.CONFLICT,"Gmail bağlantısı için uygulamayı http://127.0.0.1:8080 adresinden aç.");
-        byte[] random=new byte[32];new SecureRandom().nextBytes(random);
-        String state=Base64.getUrlEncoder().withoutPadding().encodeToString(random);new SecureRandom().nextBytes(random);
-        String verifier=Base64.getUrlEncoder().withoutPadding().encodeToString(random);
-        String challenge=Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.getBytes(java.nio.charset.StandardCharsets.US_ASCII)));
-        String url=service.authorize(state,challenge);
-        session.setAttribute("gmailState",state);session.setAttribute("gmailVerifier",verifier);session.setAttribute("gmailStarted",Instant.now());
+        var attempt=attempts.create();
+        String url=service.authorize(attempt.state(),attempt.challenge());
         return Map.of("url",url);
     }
-    @GetMapping("/callback") public ResponseEntity<Void> callback(@RequestParam(required=false)String code,
-        @RequestParam(required=false)String state,@RequestParam(required=false)String error,HttpSession session) {
-        String expected=(String)session.getAttribute("gmailState"), verifier=(String)session.getAttribute("gmailVerifier");
-        Instant started=(Instant)session.getAttribute("gmailStarted");session.removeAttribute("gmailState");session.removeAttribute("gmailVerifier");session.removeAttribute("gmailStarted");
-        if(expected==null||!expected.equals(state)||started==null||started.isBefore(Instant.now().minusSeconds(600)))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Gmail bağlantı isteğinin süresi doldu. Tekrar bağlan.");
+    @GetMapping("/callback") public ResponseEntity<?> callback(@RequestParam(required=false)String code,
+        @RequestParam(required=false)String state,@RequestParam(required=false)String error) {
+        String verifier=attempts.consume(state);
         String result="cancelled";
         if(error==null&&code!=null) {try{service.callback(code,verifier);result="connected";}catch(RuntimeException ex){result="failed";}}
+        if(desktopManaged) return ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body(
+            result.equals("connected") ? "Google bağlantısı tamamlandı. DayFlowJ penceresine dönebilirsin." : "Google bağlantısı tamamlanamadı. DayFlowJ penceresine dönüp tekrar dene.");
         return ResponseEntity.status(HttpStatus.SEE_OTHER).header("Referrer-Policy","no-referrer").location(URI.create("/?gmail="+result)).build();
     }
     public record Preferences(@NotBlank @Size(max=500)String query,boolean automatic){}

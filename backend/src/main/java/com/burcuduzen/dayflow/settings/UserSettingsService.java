@@ -19,22 +19,18 @@ public class UserSettingsService {
     }
 
     public UserSettings update(int dailyTaskGoal, LocalTime workStart, LocalTime workEnd,
-                               int focusMinutes, int breakMinutes, String timeZone) {
-        validate(dailyTaskGoal, workStart, workEnd, focusMinutes, breakMinutes, timeZone);
+                               String timeZone) {
+        validate(dailyTaskGoal, workStart, workEnd, timeZone);
         UserSettings settings = get();
-        settings.update(dailyTaskGoal, workStart, workEnd, focusMinutes, breakMinutes, timeZone);
+        settings.update(dailyTaskGoal, workStart, workEnd, timeZone);
         return repository.save(settings);
     }
 
     private void validate(int dailyTaskGoal, LocalTime workStart, LocalTime workEnd,
-                          int focusMinutes, int breakMinutes, String timeZone) {
+                          String timeZone) {
         if (dailyTaskGoal < 1 || dailyTaskGoal > 100) badRequest("Günlük görev hedefi 1 ile 100 arasında olmalıdır.");
         if (workStart == null || workEnd == null) badRequest("Çalışma saatleri gereklidir.");
         if (!workEnd.isAfter(workStart)) badRequest("Çalışma bitişi başlangıçtan sonra olmalıdır.");
-        if (focusMinutes < 5 || focusMinutes > 240 || breakMinutes < 1 || breakMinutes > 120) {
-            badRequest("Odak veya mola süresi izin verilen aralığın dışında.");
-        }
-        if (focusMinutes <= breakMinutes) badRequest("Odak süresi mola süresinden uzun olmalıdır.");
         if (timeZone == null || timeZone.isBlank()) badRequest("Saat dilimi gereklidir.");
         try { ZoneId.of(timeZone); }
         catch (DateTimeException ex) { badRequest("Saat dilimi geçersiz."); }

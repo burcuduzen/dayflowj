@@ -4,37 +4,17 @@ import java.time.*;
 import java.util.*;
 
 final class AnalyticsCalculator {
-    record Completion(Long taskId, OffsetDateTime at) {}
-    record Focus(OffsetDateTime endedAt, long focusedSeconds) {}
-    record Day(LocalDate date, int completedTasks, long focusedSeconds, int estimatedMinutes) {}
-
+    record Completion(Long taskId, OffsetDateTime at, int estimatedMinutes) {}
+    record Day(LocalDate date, int completedTasks, int estimatedMinutes) {}
     private AnalyticsCalculator() {}
 
-    static List<Day> calculate(LocalDate from, LocalDate to, ZoneId zone,
-                               List<Completion> completions, List<Focus> sessions,
-                               Map<Long, Integer> estimates) {
-        Map<LocalDate, MutableDay> days = new LinkedHashMap<>();
-        from.datesUntil(to.plusDays(1)).forEach(date -> days.put(date, new MutableDay()));
-
+    static List<Day> calculate(LocalDate from, LocalDate to, ZoneId zone, List<Completion> completions) {
+        Map<LocalDate, int[]> days = new LinkedHashMap<>();
+        from.datesUntil(to.plusDays(1)).forEach(date -> days.put(date, new int[2]));
         completions.forEach(completion -> {
-            MutableDay day = days.get(completion.at().atZoneSameInstant(zone).toLocalDate());
-            if (day != null) {
-                day.completedTasks++;
-                day.estimatedMinutes += Math.max(0, estimates.getOrDefault(completion.taskId(), 0));
-            }
+            int[] day = days.get(completion.at().atZoneSameInstant(zone).toLocalDate());
+            if (day != null) { day[0]++; day[1] += Math.max(0, completion.estimatedMinutes()); }
         });
-        sessions.forEach(session -> {
-            MutableDay day = days.get(session.endedAt().atZoneSameInstant(zone).toLocalDate());
-            if (day != null) day.focusedSeconds += Math.max(0, session.focusedSeconds());
-        });
-
-        return days.entrySet().stream().map(entry -> new Day(entry.getKey(), entry.getValue().completedTasks,
-            entry.getValue().focusedSeconds, entry.getValue().estimatedMinutes)).toList();
-    }
-
-    private static final class MutableDay {
-        int completedTasks;
-        long focusedSeconds;
-        int estimatedMinutes;
+        return days.entrySet().stream().map(entry -> new Day(entry.getKey(), entry.getValue()[0], entry.getValue()[1])).toList();
     }
 }

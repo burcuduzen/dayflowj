@@ -25,7 +25,23 @@ public class EmailVerificationService {
         settings.pendingRecipient=recipient.strip().toLowerCase(Locale.ROOT);settings.verificationHash=digest(token);
         settings.verificationExpires=OffsetDateTime.now().plusHours(1);settings.lastVerificationSent=OffsetDateTime.now();
         try { mail.send(settings.pendingRecipient,"DayFlowJ · Maille hatırlatmayı aç","Görev hatırlatmalarını açmak için bağlantıyı bu bilgisayarda aç:\n\n"+baseUrl+"/api/email/verify?token="+token+"\n\nBağlantı 1 saat geçerlidir. Bu isteği sen yapmadıysan maili yok say."); }
-        catch(RuntimeException ex) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"Doğrulama maili gönderilemedi. Görevlerini kullanabilir, mail için daha sonra tekrar deneyebilirsin."); }
+        catch(RuntimeException ex) {
+            String reason="Mail sunucusuna gönderim başarısız. SMTP sunucusu, port ve bağlantı ayarlarını kontrol et.";
+            if(ex instanceof org.springframework.mail.MailAuthenticationException)
+                reason="Gmail gönderici girişini kabul etmedi. Gmail adresini ve 16 karakterlik Google uygulama şifresini kontrol et; normal hesap şifreni kullanma.";
+            else {
+                Throwable cause=ex;
+                for(int i=0;cause!=null && i<12;i++,cause=cause.getCause()) {
+                    if(cause instanceof javax.net.ssl.SSLException) {
+                        reason="Mail sunucusuyla güvenli bağlantı kurulamadı. Java sertifika deposunu ve ağ bağlantısını kontrol et.";break;
+                    }
+                    if(cause instanceof java.net.ConnectException || cause instanceof java.net.SocketTimeoutException || cause instanceof java.net.UnknownHostException) {
+                        reason="Mail sunucusuna ulaşılamadı. İnternet bağlantısını ve SMTP portuna erişimi kontrol et.";break;
+                    }
+                }
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,reason);
+        }
         repository.save(settings);
     }
     @Transactional public synchronized void verify(String token) {

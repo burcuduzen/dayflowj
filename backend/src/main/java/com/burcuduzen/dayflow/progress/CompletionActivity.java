@@ -7,6 +7,10 @@ import java.time.OffsetDateTime;
 public class CompletionActivity {
     @Id public Long taskId;
     @Column(nullable = false) public OffsetDateTime completedAt;
+    public Integer estimatedMinutes;
     protected CompletionActivity() {}
-    public CompletionActivity(Long taskId, OffsetDateTime completedAt) { this.taskId = taskId; this.completedAt = completedAt; }
+    public CompletionActivity(Long taskId, OffsetDateTime completedAt) { this(taskId, completedAt, null); }
+    public CompletionActivity(Long taskId, OffsetDateTime completedAt, Integer estimatedMinutes) {
+        this.taskId = taskId; this.completedAt = completedAt; this.estimatedMinutes = estimatedMinutes == null ? 0 : estimatedMinutes;
+    }
 }
