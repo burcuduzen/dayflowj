@@ -12,7 +12,6 @@ const viewLabels = {
   ANALYTICS: ['İlerlemeni görünür kıl.', 'Tamamladığın görevleri ve günlük ilerlemeni son yedi günde incele.', 'Analiz'],
   PLANNING: ['Haftanı otomatik planla.', 'Açık görevlerini çalışma saatlerindeki uygun boşluklara yerleştir.', 'Otomatik plan'],
   ALL: ['Tüm görevler', 'Açık ve tamamlanmış bütün görevlerin.', 'Görevlerin'],
-  TODAY: ['Bugüne odaklan.', 'Bugün son tarihi gelen açık görevlerin.', 'Bugünkü görevler'],
   UPCOMING: ['Önünü daha net gör.', 'Bugünden sonraki açık görevlerin.', 'Yaklaşan görevler'],
   COMPLETED: ['İlerlediğini gör.', 'Bitirdiğin işler, attığın adımlar.', 'Tamamlanan görevler']
 };
@@ -46,7 +45,7 @@ function render() {
   const done = tasks.length - open;
   const today = tasks.filter(t => isOpen(t) && isToday(t)).length;
   $('all-count').textContent = tasks.length;
-  $('today-count').textContent = today;
+  
   $('upcoming-count').textContent = tasks.filter(t => isOpen(t) && isUpcoming(t)).length;
   $('completed-count').textContent = done;
   $('open-stat').textContent = open;
@@ -100,7 +99,6 @@ function render() {
   const status = $('status-filter').value;
   const priority = $('priority-filter').value;
   const visible = tasks.filter(task => {
-    if (state.view === 'TODAY' && !(isOpen(task) && isToday(task))) return false;
     if (state.view === 'UPCOMING' && !(isOpen(task) && isUpcoming(task))) return false;
     if (state.view === 'COMPLETED' && isOpen(task)) return false;
     return (!status || task.status === status) && (!priority || task.priority === priority)
