@@ -647,7 +647,7 @@ $('quick-create').onclick = async () => {
 };
 
 let settingsBusy = false;
-let savedFocusSettings = { focusMinutes: 25, breakMinutes: 5 };
+let savedPlanningSettings = { focusMinutes: 25, breakMinutes: 5, workStart: '09:00', workEnd: '18:00' };
 function setSettingsBusy(busy) {
   settingsBusy = busy;
   $('settings-form').querySelectorAll('input,button').forEach(element => element.disabled = busy);
@@ -657,8 +657,8 @@ async function openSettings() {
   try {
     const value = await settingsApi.get();
     $('settings-goal').value = value.dailyTaskGoal; $('settings-zone').value = value.timeZone;
-    $('settings-start').value = value.workStart.slice(0,5); $('settings-end').value = value.workEnd.slice(0,5);
-    savedFocusSettings = { focusMinutes: value.focusMinutes, breakMinutes: value.breakMinutes };
+    
+    savedPlanningSettings = { focusMinutes: value.focusMinutes, breakMinutes: value.breakMinutes, workStart: value.workStart, workEnd: value.workEnd };
   } catch(error) { $('settings-error').textContent = error.message; $('settings-error').hidden = false; }
   finally { setSettingsBusy(false); }
 }
@@ -669,8 +669,8 @@ $('settings-form').addEventListener('submit', async event => {
   event.preventDefault(); if (settingsBusy) return;
   setSettingsBusy(true); $('settings-error').hidden = true;
   const data = {dailyTaskGoal:Number($('settings-goal').value),timeZone:$('settings-zone').value.trim(),
-    workStart:$('settings-start').value,workEnd:$('settings-end').value,
-    ...savedFocusSettings};
+    
+    ...savedPlanningSettings};
   try { await settingsApi.save(data); $('settings-dialog').close(); notify('Ayarların kaydedildi.'); await loadProgress(); }
   catch(error) { $('settings-error').textContent = error.message; $('settings-error').hidden = false; }
   finally { setSettingsBusy(false); }
