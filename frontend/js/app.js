@@ -1,16 +1,15 @@
-import { gmailApi, taskApi, noteApi, reminderApi, progressApi, emailApi, naturalTaskApi, settingsApi, focusApi, analyticsApi, planningApi, calendarEventApi } from './api.js';
+import { gmailApi, taskApi, noteApi, reminderApi, progressApi, emailApi, naturalTaskApi, settingsApi, analyticsApi, planningApi, calendarEventApi } from './api.js';
 
 const $ = id => document.getElementById(id);
 const state = { tasks: [], view: 'CALENDAR', loading: true, loaded: false, editing: null, saving: false, busy: new Set() };
-const eventState = { events: [], loaded: false, loading: false, editing: null, saving: false };
+const eventState = { events: [], blocks: [], loaded: false, loading: false, editing: null, saving: false };
 const statusLabels = { TODO: 'Yapılacak', IN_PROGRESS: 'Devam ediyor', COMPLETED: 'Tamamlandı' };
 const priorityLabels = { HIGH: 'Yüksek öncelik', MEDIUM: 'Orta öncelik', LOW: 'Düşük öncelik' };
 const viewLabels = {
   PLAN: ['Bugünkü planım', 'Bugün, gecikmiş ve henüz tarihlendirmediğin görevler.', 'Sıradaki işler'],
   CALENDAR: ['Takvimin, görev haritan.', 'Bir gün seç, görevlerini gözden geçir ve sıradaki adımını ekle.', 'Takvim'],
   NOTES: ['Not defteri', 'Fikirlerini ve çalışma notlarını bir yerde tut.', 'Not defteri'],
-  FOCUS: ['Dikkatini koru.', 'Tek bir işe odaklan, molalarını ve gerçek çalışma süreni kaydet.', 'Focus'],
-  ANALYTICS: ['İlerlemeni görünür kıl.', 'Tamamladığın görevleri ve gerçek odak süreni son yedi günde incele.', 'Analiz'],
+  ANALYTICS: ['İlerlemeni görünür kıl.', 'Tamamladığın görevleri ve günlük ilerlemeni son yedi günde incele.', 'Analiz'],
   PLANNING: ['Haftanı otomatik planla.', 'Açık görevlerini çalışma saatlerindeki uygun boşluklara yerleştir.', 'Otomatik plan'],
   ALL: ['Tüm görevler', 'Açık ve tamamlanmış bütün görevlerin.', 'Görevlerin'],
   TODAY: ['Bugüne odaklan.', 'Bugün son tarihi gelen açık görevlerin.', 'Bugünkü görevler'],
@@ -72,18 +71,16 @@ function render() {
   $('list-title').textContent = listTitle;
   const notesView = state.view === 'NOTES';
   const calendarView = state.view === 'CALENDAR';
-  const focusView = state.view === 'FOCUS';
   const analyticsView = state.view === 'ANALYTICS';
   const planningView = state.view === 'PLANNING';
-  $('tasks-panel').hidden = notesView || calendarView || focusView || analyticsView || planningView;
+  $('tasks-panel').hidden = notesView || calendarView || analyticsView || planningView;
   $('notes-panel').hidden = !notesView;
-  $('focus-panel').hidden = !focusView;
   $('analytics-panel').hidden = !analyticsView;
   $('planning-panel').hidden = !planningView;
   $('calendar-panel').hidden = !calendarView;
   $('calendar-workspace').hidden = !calendarView;
   $('new-event').hidden = !calendarView;
-  document.querySelector('.metrics').hidden = notesView || focusView || analyticsView || planningView;
+  document.querySelector('.metrics').hidden = notesView || analyticsView || planningView;
   $('new-task').textContent = notesView ? '+ Yeni not' : '+ Yeni görev';
   if (calendarView) { renderCalendar(); if (!eventState.loaded) loadCalendarEvents(); }
   if (notesView) renderNotes();
@@ -244,7 +241,13 @@ async function removeTask(task) {
 $('date-label').textContent = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 $('new-task').addEventListener('click', () => state.view === 'NOTES' ? openNote() : openForm());
 $('empty-add').addEventListener('click', () => openForm());
-$('refresh').addEventListener('click', loadTasks);
+$('refresh').addEventListener('click', async () => {
+  await loadTasks();
+  if (state.view === 'NOTES') await loadNotes();
+  else if (state.view === 'ANALYTICS') await loadAnalytics();
+  else if (state.view === 'PLANNING') await loadPlannedBlocks();
+  else if (state.view === 'CALENDAR') await loadCalendarEvents();
+});
 $('task-form').addEventListener('submit', saveTask);
 $('title').addEventListener('input', () => $('title').setCustomValidity(''));
 ['close-dialog', 'cancel-dialog'].forEach(id => $(id).addEventListener('click', () => { if (!state.saving) $('task-dialog').close(); }));
@@ -259,7 +262,6 @@ document.querySelectorAll('[data-view]').forEach(button => button.addEventListen
     if (active) item.setAttribute('aria-current', 'page'); else item.removeAttribute('aria-current');
   });
   if (state.view === 'NOTES') loadNotes();
-  if (state.view === 'FOCUS') loadFocus();
   if (state.view === 'ANALYTICS') loadAnalytics();
   if (state.view === 'PLANNING') initializePlanning();
   render();
@@ -340,7 +342,11 @@ function fillMeter(id, ratio) {
 function eventsOnDay(date) {
   const start = new Date(date.getFullYear(),date.getMonth(),date.getDate());
   const end = new Date(start); end.setDate(end.getDate()+1);
-  return eventState.events.filter(event => new Date(event.startAt) < end && new Date(event.endAt) > start)
+  const planned = eventState.blocks.flatMap(block => {
+    const task = state.tasks.find(item => item.id === block.taskId);
+    return task ? [{ ...block, title: task.title, plannedTaskId: task.id }] : [];
+  });
+  return [...eventState.events, ...planned].filter(event => new Date(event.startAt) < end && new Date(event.endAt) > start)
     .sort((a,b)=>new Date(a.startAt)-new Date(b.startAt));
 }
 function renderCalendar() {
@@ -392,7 +398,7 @@ function renderAgenda() {
   if (!tasks.length && !fixedEvents.length) list.append(node('p','empty','Bu gün için görev veya etkinlik yok.'));
   fixedEvents.forEach(item => {
     const event=node('article','event fixed-event');event.append(node('i','stripe event-stripe'),node('span','event-time',new Date(item.startAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})));
-    const content=node('div','event-content');const title=node('button','event-name',item.title);title.onclick=()=>openCalendarEvent(item);content.append(title,node('p','event-type','Sabit etkinlik'));event.append(content);list.append(event);
+    const content=node('div','event-content');const title=node('button','event-name',item.title);title.onclick=()=>openCalendarEvent(item);content.append(title,node('p','event-type',item.plannedTaskId ? 'Planlanmış görev' : 'Sabit etkinlik'));event.append(content);list.append(event);
   });
   tasks.forEach(task => {
     const event = node('article',`event${task.status === 'COMPLETED' ? ' done' : ''}`);
@@ -430,11 +436,16 @@ $('calendar-mode').onchange = renderCalendar;
 async function loadCalendarEvents() {
   if (eventState.loading) return;
   eventState.loading=true;
-  try { eventState.events=await calendarEventApi.list();eventState.loaded=true;renderCalendar(); }
+  try { const [events, blocks] = await Promise.all([calendarEventApi.list(), planningApi.blocks()]); eventState.events=events;eventState.blocks=blocks;eventState.loaded=true;renderCalendar(); }
   catch(error){notify(error.message,true);}
   finally{eventState.loading=false;}
 }
 function openCalendarEvent(event=null) {
+  if(event?.plannedTaskId) {
+    const task = state.tasks.find(item => item.id === event.plannedTaskId);
+    if(task) openForm(task);
+    return;
+  }
   if(eventState.saving)return;
   eventState.editing=event;$('event-form').reset();$('event-error').hidden=true;
   $('event-dialog-title').textContent=event?'Etkinliği düzenle':'Yeni etkinlik';$('delete-event').hidden=!event;
@@ -636,6 +647,7 @@ $('quick-create').onclick = async () => {
 };
 
 let settingsBusy = false;
+let savedFocusSettings = { focusMinutes: 25, breakMinutes: 5 };
 function setSettingsBusy(busy) {
   settingsBusy = busy;
   $('settings-form').querySelectorAll('input,button').forEach(element => element.disabled = busy);
@@ -646,7 +658,7 @@ async function openSettings() {
     const value = await settingsApi.get();
     $('settings-goal').value = value.dailyTaskGoal; $('settings-zone').value = value.timeZone;
     $('settings-start').value = value.workStart.slice(0,5); $('settings-end').value = value.workEnd.slice(0,5);
-    $('settings-focus').value = value.focusMinutes; $('settings-break').value = value.breakMinutes;
+    savedFocusSettings = { focusMinutes: value.focusMinutes, breakMinutes: value.breakMinutes };
   } catch(error) { $('settings-error').textContent = error.message; $('settings-error').hidden = false; }
   finally { setSettingsBusy(false); }
 }
@@ -658,52 +670,11 @@ $('settings-form').addEventListener('submit', async event => {
   setSettingsBusy(true); $('settings-error').hidden = true;
   const data = {dailyTaskGoal:Number($('settings-goal').value),timeZone:$('settings-zone').value.trim(),
     workStart:$('settings-start').value,workEnd:$('settings-end').value,
-    focusMinutes:Number($('settings-focus').value),breakMinutes:Number($('settings-break').value)};
+    ...savedFocusSettings};
   try { await settingsApi.save(data); $('settings-dialog').close(); notify('Ayarların kaydedildi.'); await loadProgress(); }
   catch(error) { $('settings-error').textContent = error.message; $('settings-error').hidden = false; }
   finally { setSettingsBusy(false); }
 });
-
-let activeFocus = null;
-let focusLoadedAt = 0;
-let focusBusy = false;
-function focusSeconds() {
-  if (!activeFocus) return 0;
-  return activeFocus.focusedSeconds + (activeFocus.status === 'RUNNING' ? Math.max(0,Math.floor((Date.now()-focusLoadedAt)/1000)) : 0);
-}
-function renderFocus() {
-  const seconds = focusSeconds();
-  $('focus-time').textContent = `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
-  $('focus-state').textContent = !activeFocus ? 'Hazır' : activeFocus.status === 'RUNNING' ? 'Odaklanıyor' : 'Duraklatıldı';
-  const task = activeFocus?.taskId ? state.tasks.find(item => item.id === activeFocus.taskId) : null;
-  $('focus-task-label').textContent = task?.title || (activeFocus ? 'Serbest odak oturumu' : 'Dikkatini tek bir işe ver.');
-  $('focus-start').hidden = Boolean(activeFocus); $('focus-task').disabled = focusBusy || Boolean(activeFocus);
-  $('focus-pause').hidden = !activeFocus; $('focus-complete').hidden = !activeFocus;
-  if (activeFocus) $('focus-pause').textContent = activeFocus.status === 'PAUSED' ? 'Devam et' : 'Duraklat';
-  ['focus-start','focus-pause','focus-complete'].forEach(id => $(id).disabled = focusBusy);
-}
-async function loadFocus() {
-  if (focusBusy) return;
-  $('focus-task').replaceChildren(new Option('Görev seçmeden başla',''), ...state.tasks.filter(isOpen).map(task => new Option(task.title,String(task.id))));
-  try { activeFocus = await focusApi.active(); focusLoadedAt = Date.now(); $('focus-error').hidden = true; }
-  catch(error) { $('focus-error').textContent = error.message; $('focus-error').hidden = false; }
-  renderFocus();
-}
-async function focusAction(action) {
-  if (focusBusy) return;
-  focusBusy = true; $('focus-error').hidden = true; renderFocus();
-  try {
-    if (action === 'start') activeFocus = await focusApi.start($('focus-task').value ? Number($('focus-task').value) : null);
-    else if (action === 'complete') { await focusApi.complete(activeFocus.id); activeFocus = null; notify('Focus oturumu tamamlandı.'); }
-    else activeFocus = activeFocus.status === 'PAUSED' ? await focusApi.resume(activeFocus.id) : await focusApi.pause(activeFocus.id);
-    focusLoadedAt = Date.now();
-  } catch(error) { $('focus-error').textContent = error.message; $('focus-error').hidden = false; }
-  finally { focusBusy = false; renderFocus(); }
-}
-$('focus-start').onclick = () => focusAction('start');
-$('focus-pause').onclick = () => focusAction('toggle');
-$('focus-complete').onclick = () => focusAction('complete');
-setInterval(() => { if (state.view === 'FOCUS') renderFocus(); },1000);
 
 let analyticsBusy = false;
 async function loadAnalytics() {
@@ -712,13 +683,13 @@ async function loadAnalytics() {
   try {
     const data = await analyticsApi.get(Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Istanbul');
     $('analytics-range').textContent = `${new Date(`${data.from}T12:00:00`).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})} – ${new Date(`${data.to}T12:00:00`).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}`;
-    $('analytics-completed').textContent = data.completedTasks; $('analytics-focused').textContent = data.focusedMinutes;
-    $('analytics-estimated').textContent = data.estimatedMinutes; $('analytics-variance').textContent = data.varianceMinutes > 0 ? `+${data.varianceMinutes}` : data.varianceMinutes;
-    const max = Math.max(1,...data.days.map(day => day.focusedMinutes));
+    $('analytics-completed').textContent = data.completedTasks; $('analytics-active-days').textContent = data.days.filter(day => day.completedTasks > 0).length;
+    $('analytics-estimated').textContent = data.estimatedMinutes; $('analytics-average').textContent = (data.completedTasks / Math.max(1, data.days.length)).toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+    const max = Math.max(1,...data.days.map(day => day.completedTasks));
     $('analytics-chart').replaceChildren(...data.days.map(day => {
       const column = node('div','chart-day'); const bar = node('div','chart-bar');
-      bar.style.height = `${Math.max(3,day.focusedMinutes/max*170)}px`; bar.title = `${day.focusedMinutes} dakika odak`;
-      column.append(node('strong','',String(day.focusedMinutes)),bar,node('span','',new Date(`${day.date}T12:00:00`).toLocaleDateString('tr-TR',{weekday:'short'}))); return column;
+      bar.style.height = `${Math.max(3,day.completedTasks/max*170)}px`; bar.title = `${day.completedTasks} görev tamamlandı`;
+      column.append(node('strong','',String(day.completedTasks)),bar,node('span','',new Date(`${day.date}T12:00:00`).toLocaleDateString('tr-TR',{weekday:'short'}))); return column;
     }));
   } catch(error) { $('analytics-error').textContent = error.message; $('analytics-error').hidden = false; }
   finally { analyticsBusy = false; $('analytics-refresh').disabled = false; }
@@ -749,7 +720,7 @@ function renderPlanRows(result) {
 }
 async function loadPlannedBlocks() {
   try {
-    const blocks = await planningApi.blocks();
+    const blocks = await planningApi.blocks(); eventState.blocks = blocks; if(state.view === 'CALENDAR') renderCalendar();
     $('planning-existing').replaceChildren();
     if (blocks.length) $('planning-existing').append(node('h3','planned-heading','Onaylanmış planlar'));
     blocks.slice(0,12).forEach(block => {
@@ -826,3 +797,4 @@ $('gmail-sync').onclick=()=>gmailAction(async()=>{const r=await gmailApi.sync();
 $('gmail-disconnect').onclick=()=>gmailAction(async()=>{await gmailApi.disconnect();await renderGmail();notify('DayFlowJ Gmail bağlantısı kesildi.');});
 const gmailResult=new URLSearchParams(window.location.search).get('gmail');
 if(gmailResult){history.replaceState(null,'',window.location.pathname);$('gmail-dialog').showModal();gmailAction(async()=>{await renderGmail();if(gmailResult==='failed')throw new Error('Google bağlantısı tamamlanamadı; yeniden bağlan.');if(gmailResult==='cancelled')throw new Error('Google izni verilmedi.');});}
+
