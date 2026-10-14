@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.*;
 
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="dayflow.diagnostics.enabled",havingValue="true")
 @RestController @RequestMapping("/api/diagnostics")
 public class DiagnosticsController {
     private final DiagnosticsService service;
@@ -15,7 +14,6 @@ public class DiagnosticsController {
     @GetMapping("/logs")public List<DiagnosticStore.Entry> logs(@RequestParam(required=false)String level,@RequestParam(required=false)String search,@RequestParam(defaultValue="100")int limit){return service.entries(level,search,limit);}
 }
 @Component
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="dayflow.diagnostics.enabled",havingValue="true")
 class DiagnosticsFilter extends OncePerRequestFilter {
     private final DiagnosticsService service;
     DiagnosticsFilter(DiagnosticsService service){this.service=service;}

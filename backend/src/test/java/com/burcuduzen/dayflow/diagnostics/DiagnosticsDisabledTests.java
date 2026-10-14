@@ -11,12 +11,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class DiagnosticsDisabledTests {
  @LocalServerPort int port;
  @Autowired ApplicationContext context;
- @Test void normalUserCannotAccessPageOrMetrics()throws Exception {
-  assertTrue(context.getBeansOfType(DiagnosticsService.class).isEmpty());
+ @Test void normalUserCanAccessPageAndMetricsWithoutDeveloperFlag()throws Exception {
+  assertFalse(context.getBeansOfType(DiagnosticsService.class).isEmpty());
   var http=HttpClient.newHttpClient();
   for(String path:new String[]{"/diagnostics.html","/api/diagnostics/metrics","/api/diagnostics/logs"}) {
    var response=http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+path)).GET().build(),HttpResponse.BodyHandlers.ofString());
-   assertEquals(404,response.statusCode(),path);
+   assertEquals(200,response.statusCode(),path);
   }
  }
 }

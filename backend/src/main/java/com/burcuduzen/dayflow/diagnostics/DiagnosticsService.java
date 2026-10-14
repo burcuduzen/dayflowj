@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.util.*;
 
 @Service
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="dayflow.diagnostics.enabled",havingValue="true")
 public class DiagnosticsService {
     private final DiagnosticStore store;
     private final Deque<Map<String,Object>> samples=new ArrayDeque<>();

@@ -525,3 +525,10 @@ const { initializePlanning, loadPlannedBlocks } = createPlanning({
 createGmail({ $, node, notify, loadCalendarEvents });
 createStopwatch({ $ });
 loadTasks();
+
+$('open-system-status').onclick = async () => {
+  try {
+    if (window.dayflowDiagnostics?.open) await window.dayflowDiagnostics.open();
+    else window.location.assign('/diagnostics.html');
+  } catch (error) { notify('Sistem durumu açılmadı: ' + error.message, true); }
+};
