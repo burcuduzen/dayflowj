@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DayFlowJ · Geliştirici tanılama</title><link rel="stylesheet" href="css/diagnostics.css"></head>
+<body><main><header><div><p class="eyebrow">GELİŞTİRİCİ MODU</p><h1>Performans ve işlem logları</h1><p>DayFlowJ’nin kaynak kullanımı ve işlem sonuçları. Son kullanıcı arayüzünden ayrıdır.</p></div><button id="pause" type="button">İzlemeyi duraklat</button></header>
+<p id="error" role="alert" hidden></p><p id="sample-time">Ölçüm bekleniyor…</p>
+<section class="metrics" aria-label="Java backend performansı">
+<article><h2>Java CPU</h2><strong id="cpu">—</strong><p>Makinenin toplam işlemci kapasitesine göre.</p></article>
+<article><h2>Java heap belleği</h2><strong id="heap">—</strong><p id="heap-max">JVM nesne belleği; toplam RAM değildir.</p></article>
+<article><h2>API yanıt süresi</h2><strong id="latency">—</strong><p id="p95">Son 100 isteğin ortalaması / P95.</p></article>
+<article><h2>Çalışma süresi</h2><strong id="uptime">—</strong><p id="requests">Bu oturumdaki istekler ve hatalar.</p></article>
+</section>
+<section class="panel"><h2>Son 5 dakika · Java CPU</h2><svg id="cpu-chart" viewBox="0 0 600 130" role="img" aria-label="Java CPU kullanım geçmişi"><path d="M0 120H600" stroke="#ae9b71"/><polyline id="cpu-line" fill="none" stroke="#26a65b" stroke-width="3"/></svg><p>Ölçümler 5 saniyede bir alınır. İlk CPU örneği hesaplanana kadar “—” görünür.</p></section>
+<section class="panel"><h2>Masaüstü işlemleri</h2><p id="desktop-status">Electron ölçümü bekleniyor…</p><div class="table-scroll"><table><thead><tr><th>İşlem</th><th>PID</th><th>CPU (%) · Electron ölçümü</th><th>RAM · Working set</th></tr></thead><tbody id="processes"></tbody></table></div><p id="java-ram"></p><p>Working set fiziksel bellekteki sayfaları gösterir; paylaşılan sayfalar birden fazla işlemde sayılabilir. Java heap ve working set değerleri toplanmaz. Bu ekran bilgisayarın diğer uygulamalarını ölçmez.</p></section>
+<section class="panel"><div class="log-heading"><h2>İşlem logları</h2><button id="export" type="button">Görünen logları indir</button></div><div class="filters"><label>Seviye<select id="level"><option value="">Tümü</option><option>INFO</option><option>WARN</option><option>ERROR</option></select></label><label>İşlem ara<input id="search" maxlength="100" placeholder="Görev, Gmail, mail…"></label></div><p id="storage"></p><div class="table-scroll logs"><table><thead><tr><th>Zaman</th><th>Seviye</th><th>İşlem</th><th>Sonuç</th><th>Süre</th></tr></thead><tbody id="logs"></tbody></table></div><p>En fazla 300 kayıt gösterilir. İstek süreleri bu backend oturumuna aittir. Tanılama istekleri ölçüme dahil edilmez. Mail içerikleri, görev başlıkları, token ve parolalar loglanmaz.</p></section>
+</main><script type="module" src="js/features/diagnostics.js"></script></body></html>

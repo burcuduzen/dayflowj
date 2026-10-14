@@ -6,6 +6,8 @@ directories:
 files:
   - main.cjs
   - backend.cjs
+  - diagnostics.cjs
+  - diagnostics-preload.cjs
 extraResources:
   - from: ../backend/target/dayflowj-0.0.1-SNAPSHOT.jar
     to: backend/target/dayflowj-0.0.1-SNAPSHOT.jar

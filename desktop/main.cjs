@@ -5,6 +5,7 @@ const {
   shell,
   session,
   Menu,
+  ipcMain,
 } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
@@ -35,6 +36,8 @@ const backend = new Backend({
       )
     : undefined,
 });
+const diagnosticsEnabled=process.env.DAYFLOW_DIAGNOSTICS_ENABLED==='true';
+let diagnosticsWindow;
 let mainWindow;
 let quitting = false;
 
@@ -113,6 +116,25 @@ async function restoreBackup() {
     mainWindow.show();
   }
 }
+async function openDiagnostics() {
+  if(!diagnosticsEnabled)return;
+  if(diagnosticsWindow){diagnosticsWindow.focus();return;}
+  diagnosticsWindow=new BrowserWindow({title:'DayFlowJ · Geliştirici tanılama',width:1150,height:850,backgroundColor:'#f3e8c6',webPreferences:{preload:path.join(__dirname,'diagnostics-preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});
+  diagnosticsWindow.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+  diagnosticsWindow.webContents.on('will-navigate',(event,url)=>{if(!localAddress(url))event.preventDefault();});
+  diagnosticsWindow.on('closed',()=>{diagnosticsWindow=undefined;});
+  await diagnosticsWindow.loadURL(`${backend.origin}/diagnostics.html`);
+}
+if(diagnosticsEnabled) {
+  const {snapshot}=require('./diagnostics.cjs');
+  let pendingMetrics=null,lastMetrics=null;
+  ipcMain.handle('dayflow:developer-metrics',async event=>{
+    if(!diagnosticsWindow||event.sender!==diagnosticsWindow.webContents||!localAddress(event.senderFrame?.url))throw new Error('Tanılama erişimi yok.');
+    if(lastMetrics&&Date.now()-lastMetrics.at<4500)return lastMetrics.value;
+    if(!pendingMetrics)pendingMetrics=snapshot(app,backend.child?.pid).then(value=>{lastMetrics={at:Date.now(),value};return value;}).finally(()=>{pendingMetrics=null;});
+    return pendingMetrics;
+  });
+}
 function configureSession() {
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     if (localAddress(details.url))
@@ -149,6 +171,7 @@ async function openWindow() {
   });
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
+      ...(diagnosticsEnabled?[{label:'Geliştirici',submenu:[{label:'Performans ve işlem logları',click:openDiagnostics}]}]:[]),
       {
         label: 'Veriler',
         submenu: [
@@ -195,6 +218,7 @@ async function openWindow() {
     event.preventDefault(),
   );
   mainWindow.on('closed', () => {
+    if(diagnosticsWindow)diagnosticsWindow.close();
     mainWindow = undefined;
   });
   await mainWindow.loadURL(backend.origin);
