@@ -131,7 +131,7 @@ async function openDiagnostics() {
   const {snapshot}=require('./diagnostics.cjs');
   let pendingMetrics=null,lastMetrics=null;
   ipcMain.handle('dayflow:developer-metrics',async event=>{
-    if(!diagnosticsWindow||event.sender!==diagnosticsWindow.webContents||!localAddress(event.senderFrame?.url))throw new Error('Sistem durumu erişimi yok.');
+    if((event.sender!==mainWindow?.webContents&&event.sender!==diagnosticsWindow?.webContents)||!localAddress(event.senderFrame?.url))throw new Error('Sistem durumu erişimi yok.');
     if(lastMetrics&&Date.now()-lastMetrics.at<4500)return lastMetrics.value;
     if(!pendingMetrics)pendingMetrics=snapshot(app,backend.child?.pid).then(value=>{lastMetrics={at:Date.now(),value};return value;}).finally(()=>{pendingMetrics=null;});
     return pendingMetrics;

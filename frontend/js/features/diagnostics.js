@@ -1,4 +1,7 @@
 const $=id=>document.getElementById(id);
+const bridge=window.dayflowDiagnostics || (window.parent !== window ? window.parent.dayflowDiagnostics : null);
+const embedded=new URLSearchParams(window.location.search).get('embedded')==='1';
+if(embedded)document.body.classList.add('embedded');
 let paused=false,busy=false,logEntries=[];
 const mb=value=>Number.isFinite(value)?`${(value/1048576).toFixed(1)} MB`:'—';
 const pct=value=>Number.isFinite(value)?`${value.toFixed(1)} %`:'—';
@@ -19,7 +22,7 @@ async function refresh(){
     $('storage').textContent=r.storageAvailable?'Loglar yerel tanılama dosyasına kaydediliyor.':'Dosyaya yazılamıyor; loglar yalnızca bu oturumun belleğinde tutuluyor.';
     logEntries=logs;$('logs').replaceChildren();for(const e of logs){const tr=document.createElement('tr');cell(tr,new Date(e.time).toLocaleString('tr-TR'));cell(tr,e.level,`level-${e.level}`);cell(tr,e.action);cell(tr,e.status>=400?`Hata · HTTP ${e.status}`:e.status?`Başarılı · HTTP ${e.status}`:'Bilgi');cell(tr,e.durationMs?`${e.durationMs.toFixed(1)} ms`:'—');$('logs').append(tr);}
     if(!logs.length)$('logs').append(row(['—','—','Bu filtrede kayıt yok.','—','—']));
-    if(window.dayflowDiagnostics){try{const desktop=await window.dayflowDiagnostics.metrics();$('processes').replaceChildren();for(const p of desktop.electron.processes)$('processes').append(row([p.type,p.pid,pct(p.cpuPercent),mb(p.workingSetBytes)]));$('desktop-status').textContent=`Electron toplam working set: ${mb(desktop.electron.workingSetBytes)} · ${desktop.electron.processes.length} işlem`;$('java-ram').textContent=`Java işleminin working set RAM’i: ${mb(desktop.javaWorkingSetBytes)} · PID ${s.pid}`;}catch{$('desktop-status').textContent='Electron ölçümü alınamadı; Java ölçümleri kullanılabilir.';}}
+    if(bridge){try{const desktop=await bridge.metrics();$('processes').replaceChildren();for(const p of desktop.electron.processes)$('processes').append(row([p.type,p.pid,pct(p.cpuPercent),mb(p.workingSetBytes)]));$('desktop-status').textContent=`Electron toplam working set: ${mb(desktop.electron.workingSetBytes)} · ${desktop.electron.processes.length} işlem`;$('java-ram').textContent=`Java işleminin working set RAM’i: ${mb(desktop.javaWorkingSetBytes)} · PID ${s.pid}`;}catch{$('desktop-status').textContent='Electron ölçümü alınamadı; Java ölçümleri kullanılabilir.';}}
     else $('desktop-status').textContent='Tarayıcı modu: Electron ölçümleri yalnızca masaüstü penceresinde kullanılabilir.';
     $('error').hidden=true;
   }catch(error){$('error').textContent=error.message;$('error').hidden=false;}finally{busy=false;}
@@ -29,4 +32,4 @@ $('level').onchange=refresh;let searchTimer;$('search').oninput=()=>{clearTimeou
 $('export').onclick=()=>{const text='Zaman\tSeviye\tİşlem\tHTTP\tSüre (ms)\n'+logEntries.map(e=>[e.time,e.level,e.action,e.status,e.durationMs].join('\t')).join('\n');const url=URL.createObjectURL(new Blob([text],{type:'text/tab-separated-values;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='dayflowj-diagnostics.tsv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 setInterval(refresh,5000);document.addEventListener('visibilitychange',refresh);refresh();
 
-if(window.dayflowDiagnostics)$('back').hidden=true;
+if(bridge || embedded)$('back').hidden=true;

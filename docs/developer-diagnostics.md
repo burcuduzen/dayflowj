@@ -1,6 +1,6 @@
 # User-visible system status
 
-Performance and operation logs are available to every DayFlowJ user through the main toolbar **Sistem durumu** button and desktop **Sistem > Performans ve işlem logları** menu. No developer environment flag or administrator account is required. In Electron the page opens in a separate protected window; in browser mode it opens at `/diagnostics.html`.
+Performance and operation logs are available to every DayFlowJ user through the main navigation **Sistem durumu** tab and desktop **Sistem > Performans ve işlem logları** menu. No developer environment flag or administrator account is required. The navigation tab embeds the performance panel inside the main application; the desktop System menu can also open a separate protected window. The embedded panel stops polling when the user leaves the tab.
 
 Normal desktop-token, origin, sandbox and IPC sender checks still apply. The renderer has no Node integration. The preload exposes read-only metrics and an operation that opens the system-status window.
 

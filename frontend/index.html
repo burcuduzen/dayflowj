@@ -27,7 +27,7 @@
             ><span class="chip streak-chip"
               >🔥 <b id="streak-count">0</b> GÜN SERİ</span
             ><span class="chip">✓ <b id="done-stat">0</b> TAMAMLANDI</span
-            ><button class="secondary" id="open-system-status">Sistem durumu</button><button class="secondary" id="open-gmail">Mailden takvime</button
+            ><button class="secondary" id="open-gmail">Mailden takvime</button
             ><button class="secondary" id="open-email">Maille hatırlat</button
             ><button class="secondary" id="enable-notifications">
               Bildirimleri aç
@@ -60,7 +60,9 @@
           <button class="nav-item" data-view="PLANNING">
             <span>✦</span> Otomatik planla
           </button>
+          <button class="nav-item" data-view="SYSTEM"><span>▥</span> Sistem durumu</button>
         </nav>
+        <section id="system-status-panel" hidden><iframe id="system-status-frame" title="Performans ve işlem logları" style="width:100%;height:1250px;border:0;margin-top:24px;background:#f3e8c6"></iframe></section>
         <section class="page-heading">
           <div>
             <p class="eyebrow">Gününü planla</p>
