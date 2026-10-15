@@ -39,6 +39,7 @@ const priorityLabels = {
   LOW: 'Düşük öncelik',
 };
 const viewLabels = {
+  SYSTEM: ['Sistem durumu', 'Uygulamanın kaynak kullanımı ve işlem logları.', 'Sistem durumu'],
   CALENDAR: [
     'Takvimin, görev haritan.',
     'Bir gün seç, görevlerini gözden geçir ve sıradaki adımını ekle.',
@@ -132,15 +133,20 @@ function render() {
   $('view-title').textContent = title;
   $('view-description').textContent = description;
   $('list-title').textContent = listTitle;
+  const systemView = state.view === 'SYSTEM';
+  $('system-status-panel').hidden = !systemView;
+  const systemFrame = $('system-status-frame');
+  if (systemView && !systemFrame.getAttribute('src')) systemFrame.src = '/diagnostics.html?embedded=1';
+  else if (!systemView && systemFrame.getAttribute('src')) { systemFrame.removeAttribute('src'); }
   const focusView = state.view === 'FOCUS';
   $('stopwatch-panel').hidden = !focusView;
-  document.querySelector('.page-heading').hidden = focusView;
+  document.querySelector('.page-heading').hidden = focusView || systemView;
   const notesView = state.view === 'NOTES';
   const calendarView = state.view === 'CALENDAR';
   const analyticsView = state.view === 'ANALYTICS';
   const planningView = state.view === 'PLANNING';
   $('tasks-panel').hidden =
-    notesView || calendarView || analyticsView || planningView || focusView;
+    notesView || calendarView || analyticsView || planningView || focusView || systemView;
   $('notes-panel').hidden = !notesView;
   $('analytics-panel').hidden = !analyticsView;
   $('planning-panel').hidden = !planningView;
@@ -525,3 +531,4 @@ const { initializePlanning, loadPlannedBlocks } = createPlanning({
 createGmail({ $, node, notify, loadCalendarEvents });
 createStopwatch({ $ });
 loadTasks();
+

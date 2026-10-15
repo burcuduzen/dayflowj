@@ -16,6 +16,9 @@ import java.util.*;
 
 @Service
 public class GmailService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.burcuduzen.dayflow.diagnostics.DiagnosticsService> diagnostics;
+    private void audit(String level,String action){if(diagnostics!=null)diagnostics.ifAvailable(d->d.event(level,action));}
     private final String clientId,secret,redirect;
     private final MailCandidateRepository repository;
     private final CalendarEventService calendar;
@@ -103,8 +106,8 @@ public class GmailService {
                 }
                 page=Objects.toString(list.get("nextPageToken"),"");
             }while(!page.isEmpty()&&++pages<5);
-            nextPage=page;lastError="";return Map.of("added",added,"pending",pending,"more",!page.isEmpty());
-        }catch(RuntimeException ex){lastError="Gmail kontrolü tamamlanamadı. Bağlantını ve filtreyi kontrol et.";throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,lastError);}
+            nextPage=page;lastError="";audit("INFO","Gmail kontrolü tamamlandı · "+added+" etkinlik eklendi · "+pending+" öneri");return Map.of("added",added,"pending",pending,"more",!page.isEmpty());
+        }catch(RuntimeException ex){audit("ERROR","Gmail kontrolü başarısız");lastError="Gmail kontrolü tamamlanamadı. Bağlantını ve filtreyi kontrol et.";throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,lastError);}
     }
     private String body(Map<?,?> payload) {
         StringBuilder text=new StringBuilder();
@@ -126,7 +129,7 @@ public class GmailService {
     private MailCandidate find(Long id) {return repository.findById(id).filter(c->!account.isBlank()&&account.equals(c.account))
         .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Mail kaydı bulunamadı."));}
     @Scheduled(fixedDelay=300000,initialDelay=60000) public void poll() {
-        synchronized(this){if(accessToken==null)return;try{sync();}catch(RuntimeException ignored){}}
+        synchronized(this){if(accessToken==null)return;try{sync();}catch(RuntimeException ignored){audit("WARN","Zamanlanmış Gmail kontrolü tamamlanamadı");}}
     }
     static String enc(String value){return URLEncoder.encode(value,StandardCharsets.UTF_8);}
 }

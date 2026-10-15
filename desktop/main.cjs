@@ -5,6 +5,7 @@ const {
   shell,
   session,
   Menu,
+  ipcMain,
 } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
@@ -35,6 +36,7 @@ const backend = new Backend({
       )
     : undefined,
 });
+let diagnosticsWindow;
 let mainWindow;
 let quitting = false;
 
@@ -113,6 +115,28 @@ async function restoreBackup() {
     mainWindow.show();
   }
 }
+ipcMain.handle('dayflow:open-system-status',async event=>{
+  if(!mainWindow||event.sender!==mainWindow.webContents||!localAddress(event.senderFrame?.url))throw new Error('Sistem durumu erişimi yok.');
+  await openDiagnostics();
+});
+async function openDiagnostics() {
+  if(diagnosticsWindow){diagnosticsWindow.focus();return;}
+  diagnosticsWindow=new BrowserWindow({title:'DayFlowJ · Sistem durumu',width:1150,height:850,backgroundColor:'#f3e8c6',webPreferences:{preload:path.join(__dirname,'diagnostics-preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});
+  diagnosticsWindow.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+  diagnosticsWindow.webContents.on('will-navigate',(event,url)=>{if(!localAddress(url))event.preventDefault();});
+  diagnosticsWindow.on('closed',()=>{diagnosticsWindow=undefined;});
+  await diagnosticsWindow.loadURL(`${backend.origin}/diagnostics.html`);
+}
+{
+  const {snapshot}=require('./diagnostics.cjs');
+  let pendingMetrics=null,lastMetrics=null;
+  ipcMain.handle('dayflow:developer-metrics',async event=>{
+    if((event.sender!==mainWindow?.webContents&&event.sender!==diagnosticsWindow?.webContents)||!localAddress(event.senderFrame?.url))throw new Error('Sistem durumu erişimi yok.');
+    if(lastMetrics&&Date.now()-lastMetrics.at<4500)return lastMetrics.value;
+    if(!pendingMetrics)pendingMetrics=snapshot(app,backend.child?.pid).then(value=>{lastMetrics={at:Date.now(),value};return value;}).finally(()=>{pendingMetrics=null;});
+    return pendingMetrics;
+  });
+}
 function configureSession() {
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     if (localAddress(details.url))
@@ -141,6 +165,7 @@ async function openWindow() {
     backgroundColor: '#f3e8c6',
     show: false,
     webPreferences: {
+      preload:path.join(__dirname,'diagnostics-preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -149,6 +174,7 @@ async function openWindow() {
   });
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
+      {label:'Sistem',submenu:[{label:'Performans ve işlem logları',click:openDiagnostics}]},
       {
         label: 'Veriler',
         submenu: [
@@ -195,6 +221,7 @@ async function openWindow() {
     event.preventDefault(),
   );
   mainWindow.on('closed', () => {
+    if(diagnosticsWindow)diagnosticsWindow.close();
     mainWindow = undefined;
   });
   await mainWindow.loadURL(backend.origin);

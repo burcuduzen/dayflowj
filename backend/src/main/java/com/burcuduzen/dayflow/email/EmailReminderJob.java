@@ -11,6 +11,9 @@ import java.util.Objects;
 
 @Component
 public class EmailReminderJob {
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<com.burcuduzen.dayflow.diagnostics.DiagnosticsService> diagnostics;
+    private void audit(String level,String action){if(diagnostics!=null)diagnostics.ifAvailable(d->d.event(level,action));}
     private static final Logger log = LoggerFactory.getLogger(EmailReminderJob.class);
     private final EmailPreferencesRepository preferences;
     private final EmailDeliveryRepository deliveries;
@@ -43,7 +46,9 @@ public class EmailReminderJob {
                 mail.send(settings.recipient, subject, current.getTitle() + "\n\nSon tarih: " + when + "\nÖncelik: " + current.getPriority()
                     + "\n\nGörevini DayFlowJ’de aç: http://127.0.0.1:8080/\nE-posta hatırlatmalarını uygulamadaki E-posta ayarlarından kapatabilirsin.");
                 delivery.sentAt = OffsetDateTime.now(); deliveries.save(delivery);
+                audit("INFO","Hatırlatma maili gönderildi");
             } catch (RuntimeException ex) {
+                audit("ERROR","Hatırlatma maili gönderilemedi");
                 // Never log credentials, SMTP payloads or provider exception text.
                 log.warn("DayFlowJ email reminder failed for task {}. Retry after 15 minutes.", current.getId());
             }
